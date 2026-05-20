@@ -459,14 +459,14 @@
       const [step, setStep] = useState(0);
       const [answers, setAnswers] = useState({
         name: '', q1: '', q2: [], q3: 0, q4: '', q4Note: '', q5: '', q6: '', q6Note: '', q7: '',
-        initiatives: [], didable: '', comment: ''
+        initiatives: [], didableTags: [], didable: '', troubleLevel: '', troubleNote: '', comment: ''
       });
       const [submitting, setSubmitting] = useState(false);
       const [result, setResult] = useState(null);
       const [aiComment, setAiComment] = useState('');
       const [aiLoading, setAiLoading] = useState(false);
 
-      const totalSteps = 11;
+      const totalSteps = 12;
       const progress = (step / totalSteps) * 100;
 
       const update = (field, value) => setAnswers(a => ({ ...a, [field]: value }));
@@ -564,7 +564,8 @@
             {step === 7 && <Q7Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
             {step === 8 && <InitiativesStep answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
             {step === 9 && <DidableStep answers={answers} update={update} onNext={goNext} onBack={goBack} />}
-            {step === 10 && <CommentStep answers={answers} update={update} onSubmit={submit} onBack={goBack} submitting={submitting} />}
+            {step === 10 && <TroubleStep answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 11 && <CommentStep answers={answers} update={update} onSubmit={submit} onBack={goBack} submitting={submitting} />}
           </div>
         </div>
       );
@@ -923,23 +924,107 @@
       );
     };
 
-    const DidableStep = ({ answers, update, onNext, onBack }) => (
-      <div>
-        <h2 className="text-xl font-bold mb-1">🎯 今月、できるようになったことは？</h2>
-        <p className="text-sm text-gray-500 mb-6">AIのおかげで「これ前はできなかった」ってこと（任意）</p>
-        <textarea
-          value={answers.didable}
-          onChange={e => update('didable', e.target.value)}
-          rows={4}
-          placeholder="例：提案資料の初稿をAIに任せられるようになった"
-          className="w-full p-3 border rounded-lg text-base"
-        />
-        <div className="flex justify-between mt-6">
-          <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
-          <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
+    const DidableStep = ({ answers, update, onNext, onBack }) => {
+      const opts = [
+        { v: '多言語対応', e: '🌍', label: '多言語対応（英語・中国語のメール作成）' },
+        { v: 'データ分析', e: '📊', label: 'データ分析・レポート作成' },
+        { v: '企画完結', e: '📝', label: '企画書・提案書を一人で完結' },
+        { v: '広範リサーチ', e: '🔍', label: '広範囲・短時間リサーチ' },
+        { v: 'デザイン高速化', e: '🎨', label: 'デザイン初稿の高速化' },
+        { v: '自動化', e: '🤖', label: '繰り返し作業の自動化' },
+        { v: '議事録要約', e: '💬', label: '議事録・要約の自動化' },
+        { v: 'コード活用', e: '💻', label: 'コード・スクリプト作成' },
+      ];
+      const toggle = v => {
+        const cur = answers.didableTags || [];
+        update('didableTags', cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v]);
+      };
+      const sel = answers.didableTags || [];
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-1">🎯 今月、できるようになったことは？</h2>
+          <p className="text-sm text-gray-500 mb-6">AIのおかげで「これ前はできなかった」ってこと（複数選択OK・任意）{sel.length > 0 && <span className="ml-2 text-indigo-500 font-bold">{sel.length}個</span>}</p>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {opts.map(o => (
+              <button
+                key={o.v}
+                onClick={() => toggle(o.v)}
+                className={`p-3 rounded-xl border-2 transition text-left ${sel.includes(o.v) ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-400'}`}
+              >
+                <div className="text-2xl mb-1">{o.e}</div>
+                <div className="text-xs">{o.label}</div>
+              </button>
+            ))}
+          </div>
+          <label className="block">
+            <span className="text-xs text-gray-500">その他・具体的なエピソード（任意）</span>
+            <textarea
+              value={answers.didable || ''}
+              onChange={e => update('didable', e.target.value)}
+              rows={3}
+              placeholder="例：提案資料の初稿をAIに任せられるようになった／英語のメールが自分で書けるように"
+              className="w-full p-3 border rounded-lg text-base mt-1"
+            />
+          </label>
+          <div className="flex justify-between mt-6">
+            <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+            <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
+          </div>
         </div>
-      </div>
-    );
+      );
+    };
+
+    const TroubleStep = ({ answers, update, onNext, onBack }) => {
+      const opts = [
+        { e: '😌', label: '全然困ってない', detail: 'スムーズに使えてる' },
+        { e: '🙂', label: '少し困ってる', detail: 'たまに詰まる程度' },
+        { e: '😐', label: '中程度', detail: 'ちょこちょこ困りごとあり' },
+        { e: '😟', label: 'かなり困ってる', detail: 'やりたいことができない' },
+        { e: '😣', label: '非常に困ってる', detail: 'AI使うこと自体が大変' },
+      ];
+      const choose = v => update('troubleLevel', v);
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-1">🆘 AI活用で困ってること、どれくらいある？</h2>
+          <p className="text-sm text-gray-500 mb-6">AI推進チームのサポート優先順位を知るために</p>
+          <div className="grid grid-cols-5 gap-1.5 mb-3">
+            {opts.map(o => (
+              <button
+                key={o.e}
+                onClick={() => choose(o.e)}
+                className={`p-3 rounded-xl border-2 text-3xl transition ${answers.troubleLevel === o.e ? 'border-indigo-500 bg-indigo-50 scale-105' : 'border-gray-200 hover:border-gray-400'}`}
+              >{o.e}</button>
+            ))}
+          </div>
+          <div className="grid grid-cols-5 gap-1.5 mb-4">
+            {opts.map(o => (
+              <div key={o.e} className={`text-center text-[10px] leading-tight transition ${answers.troubleLevel === o.e ? 'text-indigo-700 font-bold' : 'text-gray-500'}`}>
+                <div className="font-medium">{o.label}</div>
+              </div>
+            ))}
+          </div>
+          {answers.troubleLevel && (
+            <p className="text-xs text-center text-gray-500 mb-4">
+              {opts.find(o => o.e === answers.troubleLevel)?.detail}
+            </p>
+          )}
+          <label className="block">
+            <span className="text-xs text-gray-500">具体的に何で困ってる？（任意・サポートしてほしいことがあれば）</span>
+            <textarea
+              value={answers.troubleNote || ''}
+              onChange={e => update('troubleNote', e.target.value)}
+              rows={3}
+              placeholder="例：プロンプトの書き方がわからない／○○の業務でどう使えばいいか／API料金が心配"
+              className="w-full p-3 border rounded-lg text-base mt-1"
+            />
+          </label>
+          <div className="flex justify-between mt-6">
+            <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+            <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
+          </div>
+        </div>
+      );
+    };
 
     const CommentStep = ({ answers, update, onSubmit, onBack, submitting }) => (
       <div>
@@ -1306,9 +1391,18 @@
         const m = thisM.filter(r => r.department === d);
         const saved = m.reduce((s,r) => s + (r.q3 || 0) * PCT_TO_HOURS, 0);
         const cost = saved * hourlyRate;
-        const did = m.filter(r => r.didable && r.didable.length > 5).length;
-        return { dept: d, count: m.length, saved, cost, did };
+        const tagCount = m.reduce((s, r) => s + ((r.didableTags || []).length), 0);
+        return { dept: d, count: m.length, saved, cost, did: tagCount };
       });
+
+      // 新規創出件数（全社のできたことタグ合計）
+      const totalDidableTags = thisM.reduce((s, r) => s + ((r.didableTags || []).length), 0);
+
+      // 困り度サマリー
+      const troubleLevels = ['😌','🙂','😐','😟','😣'];
+      const troubleCounts = troubleLevels.map(lv => thisM.filter(r => r.troubleLevel === lv).length);
+      const seriouslyTroubled = thisM.filter(r => r.troubleLevel === '😟' || r.troubleLevel === '😣');
+      const troubleVoices = thisM.filter(r => r.troubleNote && r.troubleNote.length > 3).slice(0, 5);
 
       // 施策別実施率
       const initStats = master.initiatives.filter(i => i.active).map(i => {
@@ -1481,26 +1575,26 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
                   </div>
                 </div>
 
-                {/* KPI4枚 */}
+                {/* KPI4枚（経営判断直結指標） */}
                 <div className="col-span-3 row-span-1 bg-emerald-50 rounded-xl p-3 flex flex-col justify-center">
-                  <div className="text-xs text-emerald-700">合計時短時間（今月）</div>
+                  <div className="text-xs text-emerald-700">🕐 月間削減時間</div>
                   <div className="text-3xl font-bold text-emerald-700">{totalSaved.toFixed(1)}h</div>
                   <div className="text-xs text-emerald-600">先月比 {totalSaved - lastSaved > 0 ? '+' : ''}{(totalSaved - lastSaved).toFixed(1)}h</div>
                 </div>
                 <div className="col-span-3 row-span-1 bg-amber-50 rounded-xl p-3 flex flex-col justify-center">
-                  <div className="text-xs text-amber-700">新規創出件数</div>
-                  <div className="text-3xl font-bold text-amber-700">{didableCount}</div>
-                  <div className="text-xs text-amber-600">「できるようになった」回答</div>
-                </div>
-                <div className="col-span-3 row-span-1 bg-rose-50 rounded-xl p-3 flex flex-col justify-center">
-                  <div className="text-xs text-rose-700">施策実施率（最大）</div>
-                  <div className="text-3xl font-bold text-rose-700">{Math.max(...initStats.map(i=>i.rate), 0)}%</div>
-                  <div className="text-xs text-rose-600">{initStats.length}施策中</div>
+                  <div className="text-xs text-amber-700">🌱 新規創出件数</div>
+                  <div className="text-3xl font-bold text-amber-700">{totalDidableTags}</div>
+                  <div className="text-xs text-amber-600">できるようになったことタグ合計</div>
                 </div>
                 <div className="col-span-3 row-span-1 bg-sky-50 rounded-xl p-3 flex flex-col justify-center">
-                  <div className="text-xs text-sky-700">ヘビーユーザー率</div>
+                  <div className="text-xs text-sky-700">👥 AI浸透率</div>
                   <div className="text-3xl font-bold text-sky-700">{heavyRate}%</div>
                   <div className="text-xs text-sky-600">毎日活用者 / 回答者</div>
+                </div>
+                <div className="col-span-3 row-span-1 bg-rose-50 rounded-xl p-3 flex flex-col justify-center">
+                  <div className="text-xs text-rose-700">🆘 困ってる人</div>
+                  <div className="text-3xl font-bold text-rose-700">{seriouslyTroubled.length}<span className="text-base">名</span></div>
+                  <div className="text-xs text-rose-600">😟😣 回答者（要サポート）</div>
                 </div>
 
                 {/* AI分析 */}
@@ -1556,17 +1650,26 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
                   </div>
                 </div>
 
-                {/* できたことの声 */}
-                <div className="col-span-4 row-span-2 bg-yellow-50 rounded-xl p-3 border border-yellow-200 overflow-auto">
-                  <div className="text-xs font-bold mb-2">💬 できるようになったことの声</div>
-                  <div className="space-y-2">
-                    {voices.length === 0 ? (
-                      <p className="text-xs text-gray-400">まだ投稿はありません</p>
+                {/* 困りごとの声（経営層が次の打ち手判断する材料） */}
+                <div className="col-span-4 row-span-2 bg-rose-50 rounded-xl p-3 border border-rose-200 overflow-auto">
+                  <div className="text-xs font-bold mb-2">🆘 困りごとの声（要サポート）</div>
+                  {/* 困り度分布 */}
+                  <div className="flex gap-1 mb-3">
+                    {troubleLevels.map((lv, i) => (
+                      <div key={lv} className="flex-1 text-center">
+                        <div className="text-lg">{lv}</div>
+                        <div className="text-xs font-bold">{troubleCounts[i]}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-1.5">
+                    {troubleVoices.length === 0 ? (
+                      <p className="text-xs text-gray-400">困りごとの投稿なし</p>
                     ) : (
-                      voices.map((v, i) => (
-                        <div key={i} className="text-xs p-2 bg-white rounded border-l-2 border-yellow-400">
-                          <p>{v.didable}</p>
-                          <p className="text-gray-500 mt-1">— {v.department}</p>
+                      troubleVoices.map((v, i) => (
+                        <div key={i} className="text-xs p-2 bg-white rounded border-l-2 border-rose-400">
+                          <p>{v.troubleLevel} {v.troubleNote}</p>
+                          <p className="text-gray-500 mt-0.5 text-[10px]">— {v.department}</p>
                         </div>
                       ))
                     )}

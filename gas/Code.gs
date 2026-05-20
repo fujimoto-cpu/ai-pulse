@@ -96,25 +96,29 @@ function submitResponse(data) {
   if (!sheet) throw new Error('「回答」タブが見つかりません');
 
   const score = data.score || calcScore(data);
-  const month = data.month || (new Date()).toISOString().slice(0, 7); // YYYY-MM
+  const month = data.month || (new Date()).toISOString().slice(0, 7);
+  // 新列構造：質問の備考は該当質問の右隣・経営判断材料を明確化
   const row = [
-    new Date().toISOString(),     // A タイムスタンプ
-    month,                        // B 対象月（YYYY-MM）
-    data.name || '',              // C 名前
-    data.department || '',        // D 部署
-    data.q1 || '',                // E Q1頻度
-    JSON.stringify(data.q2 || []),// F Q2場面JSON
-    data.q3 || 0,                 // G Q3効率化%
-    data.q4 || '',                // H Q4成長
-    data.q5 || '',                // I Q5目標
-    data.q6 || '',                // J Q6共有
-    data.q7 || '',                // K Q7BP
-    JSON.stringify(data.initiatives || []), // L 施策実施JSON
-    data.didable || '',           // M できたこと
-    data.comment || '',           // N コメント
-    score,                        // O スコア
-    data.q4Note || '',            // P Q4備考
-    data.q6Note || ''             // Q Q6備考
+    new Date().toISOString(),                   // A タイムスタンプ
+    month,                                      // B 対象月
+    data.name || '',                            // C 名前
+    data.department || '',                      // D 部署
+    data.q1 || '',                              // E Q1 使用頻度
+    JSON.stringify(data.q2 || []),              // F Q2 場面
+    data.q3 || 0,                               // G Q3 効率化%
+    data.q4 || '',                              // H Q4 成長実感
+    data.q4Note || '',                          // I Q4備考
+    data.q5 || '',                              // J Q5 方向性
+    data.q6 || '',                              // K Q6 共有
+    data.q6Note || '',                          // L Q6備考
+    data.q7 || '',                              // M Q7 ベスプラ
+    JSON.stringify(data.initiatives || []),     // N 施策実施
+    JSON.stringify(data.didableTags || []),     // O できたことタグ
+    data.didable || '',                         // P できたこと（自由記述）
+    data.troubleLevel || '',                    // Q 困り度
+    data.troubleNote || '',                     // R 困り度の具体
+    data.comment || '',                         // S コメント
+    score                                       // T スコア(XP)
   ];
   sheet.appendRow(row);
   return { ok: true, score };
@@ -144,22 +148,25 @@ function getDashboard() {
     const ts = new Date(r[0]);
     return {
       timestamp: ts.toISOString(),
-      month: r[1] || Utilities.formatDate(ts, 'JST', 'yyyy-MM'), // B列にあればそれ、無ければtsから計算
+      month: r[1] || Utilities.formatDate(ts, 'JST', 'yyyy-MM'),
       name: r[2],
       department: r[3],
       q1: r[4],
       q2: tryParseJSON(r[5]) || [],
       q3: parseFloat(r[6]) || 0,
       q4: r[7],
-      q5: r[8],
-      q6: r[9],
-      q7: r[10],
-      initiatives: tryParseJSON(r[11]) || [],
-      didable: r[12],
-      comment: r[13],
-      score: parseInt(r[14]) || 0,
-      q4Note: r[15] || '',
-      q6Note: r[16] || ''
+      q4Note: r[8] || '',
+      q5: r[9],
+      q6: r[10],
+      q6Note: r[11] || '',
+      q7: r[12],
+      initiatives: tryParseJSON(r[13]) || [],
+      didableTags: tryParseJSON(r[14]) || [],
+      didable: r[15] || '',
+      troubleLevel: r[16] || '',
+      troubleNote: r[17] || '',
+      comment: r[18] || '',
+      score: parseInt(r[19]) || 0
     };
   });
   return { responses };
