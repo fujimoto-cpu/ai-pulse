@@ -96,23 +96,25 @@ function submitResponse(data) {
   if (!sheet) throw new Error('「回答」タブが見つかりません');
 
   const score = data.score || calcScore(data);
+  const month = data.month || (new Date()).toISOString().slice(0, 7); // YYYY-MM
   const row = [
     new Date().toISOString(),     // A タイムスタンプ
-    data.name || '',              // B 名前
-    data.department || '',        // C 部署
-    data.q1 || '',                // D Q1頻度
-    JSON.stringify(data.q2 || []),// E Q2場面JSON
-    data.q3 || 0,                 // F Q3効率化%
-    data.q4 || '',                // G Q4成長
-    data.q5 || '',                // H Q5目標
-    data.q6 || '',                // I Q6共有
-    data.q7 || '',                // J Q7BP
-    JSON.stringify(data.initiatives || []), // K 施策実施JSON
-    data.didable || '',           // L できたこと
-    data.comment || '',           // M コメント
-    score,                        // N スコア
-    data.q4Note || '',            // O Q4備考
-    data.q6Note || ''             // P Q6備考
+    month,                        // B 対象月（YYYY-MM）
+    data.name || '',              // C 名前
+    data.department || '',        // D 部署
+    data.q1 || '',                // E Q1頻度
+    JSON.stringify(data.q2 || []),// F Q2場面JSON
+    data.q3 || 0,                 // G Q3効率化%
+    data.q4 || '',                // H Q4成長
+    data.q5 || '',                // I Q5目標
+    data.q6 || '',                // J Q6共有
+    data.q7 || '',                // K Q7BP
+    JSON.stringify(data.initiatives || []), // L 施策実施JSON
+    data.didable || '',           // M できたこと
+    data.comment || '',           // N コメント
+    score,                        // O スコア
+    data.q4Note || '',            // P Q4備考
+    data.q6Note || ''             // Q Q6備考
   ];
   sheet.appendRow(row);
   return { ok: true, score };
@@ -142,20 +144,22 @@ function getDashboard() {
     const ts = new Date(r[0]);
     return {
       timestamp: ts.toISOString(),
-      month: Utilities.formatDate(ts, 'JST', 'yyyy-MM'),
-      name: r[1],
-      department: r[2],
-      q1: r[3],
-      q2: tryParseJSON(r[4]) || [],
-      q3: parseFloat(r[5]) || 0,
-      q4: r[6],
-      q5: r[7],
-      q6: r[8],
-      q7: r[9],
-      initiatives: tryParseJSON(r[10]) || [],
-      didable: r[11],
-      comment: r[12],
-      score: parseInt(r[13]) || 0
+      month: r[1] || Utilities.formatDate(ts, 'JST', 'yyyy-MM'), // B列にあればそれ、無ければtsから計算
+      name: r[2],
+      department: r[3],
+      q1: r[4],
+      q2: tryParseJSON(r[5]) || [],
+      q3: parseFloat(r[6]) || 0,
+      q4: r[7],
+      q5: r[8],
+      q6: r[9],
+      q7: r[10],
+      initiatives: tryParseJSON(r[11]) || [],
+      didable: r[12],
+      comment: r[13],
+      score: parseInt(r[14]) || 0,
+      q4Note: r[15] || '',
+      q6Note: r[16] || ''
     };
   });
   return { responses };

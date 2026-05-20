@@ -533,8 +533,17 @@
         return <SurveyResult result={result} aiComment={aiComment} aiLoading={aiLoading} onComplete={onComplete} />;
       }
 
+      // 今月の対象月ラベル
+      const now = new Date();
+      const monthLabel = `${now.getFullYear()}年${now.getMonth() + 1}月分`;
+
       return (
         <div className="max-w-2xl mx-auto px-4 py-6">
+          <div className="mb-4 flex justify-center">
+            <span className="inline-flex items-center gap-1.5 text-sm px-4 py-1.5 rounded-full bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 font-bold">
+              📅 {monthLabel}のチェックイン
+            </span>
+          </div>
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs text-gray-500">Step {step + 1} / {totalSteps + 1}</span>
