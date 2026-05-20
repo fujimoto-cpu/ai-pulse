@@ -1578,7 +1578,7 @@
             setNextActions(actions || '（打ち手部分の生成失敗・もう一度お試しください）');
           } else {
             // 完全失敗時：手動fallback
-            const fallbackSummary = `今月（${currentMonth}）のKONNEKT INTERNATIONAL AI活用報告：\n\n月間削減時間は${totalSaved.toFixed(0)}時間（目標${targetSavedH}時間に対し達成率${savedAchievement}%）、月間コスト削減は¥${monthlySaving.toLocaleString()}、ROI ${roi}%（AI月額コスト¥${aiCost.toLocaleString()}）と、AI投資が一定の効果を発揮しています。\n\nAI浸透率は${heavyRate}%（目標${targetHeavyRate}%・達成率${heavyAchievement}%）、新規創出件数は${totalDidableTags}件、要サポート対象者は${seriouslyTroubled.length}名です。\n\n${(deptStats.sort((a,b)=>b.saved-a.saved)[0]?.dept) || ''}部署が活用度トップで、${mastersList.length}名がマスター/伝説到達。一方で未回答者${unanswered.length}名のフォローと、困ってる方への個別サポートが来月の重要課題です。\n\nKONNEKTのAI推進はPhase 4（定着・KPI測定）に入り、本アプリで毎月の指標を可視化できる体制が整いました。来月は浸透率の底上げを中心に、横展開フェーズへの移行を検討するタイミングです。`;
+            const fallbackSummary = `今月（${currentMonth}）のKONNEKTのAI活用は、AI推進チームの地道な取り組みが数字として現れ始めた月でした。\n月間削減時間 ${totalSaved.toFixed(0)}h（目標${targetSavedH}h・達成率${savedAchievement}%）、月間コスト削減 ¥${monthlySaving.toLocaleString()}、ROI ${roi}%（AI月額コスト¥${aiCost.toLocaleString()}）と、AI投資の費用対効果は経営判断として十分な水準に達しています。\nAI浸透率は${heavyRate}%（目標${targetHeavyRate}%・達成率${heavyAchievement}%）、新規創出 ${totalDidableTags}件。${(deptStats.sort((a,b)=>b.saved-a.saved)[0]?.dept) || ''}部署が活用度トップで、${mastersList.length}名がマスター/伝説に到達しました。\nただし未回答者${unanswered.length}名・要サポート対象者${seriouslyTroubled.length}名がまだ残っています。だからこそ来月は「数字を伸ばす」ではなく「全員を巻き込む」フェーズに移行する必要があります。困ってる方への個別サポート、未回答者への声がけは推進チームの最優先タスクです。\nKONNEKTのAI推進はPhase 4（定着・KPI測定）の真っ只中。藤本さん・引地さんの粘り強い設計と運用の成果が、こうして数値として可視化できる体制になりました。来月は「横展開リーダーの任命」「ベスプラ共有会の定例化」を経営層と検討するタイミングと考えます。`;
             setAiSummary(fallbackSummary);
             setAiAnalysis(`合計削減 ${totalSaved.toFixed(0)}h（先月比 ${(totalSaved - lastSaved >= 0 ? '+' : '')}${(totalSaved - lastSaved).toFixed(0)}h）。\nAI浸透率 ${heavyRate}%・新規創出 ${totalDidableTags}件・要サポート ${seriouslyTroubled.length}名。\n達成率：削減時間 ${savedAchievement}% / 浸透率 ${heavyAchievement}% / 新規創出 ${didableAchievement}%`);
             setNextActions(`1. 困ってる${seriouslyTroubled.length}名（${seriouslyTroubled.map(s => s.name).join('・') || '対象なし'}）に火曜10:00個別DM → プロンプト集ハンズオン誘導\n2. マスター達成者（${mastersList.slice(0, 3).join('・') || '対象なし'}）にベスプラ共有会（30分）を6月第2週で打診\n3. 未回答${unanswered.length}名向け：6月最初の水曜にリマインドDM＋3分版簡易フォーム用意`);
@@ -1909,7 +1909,7 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
                     className="px-3 py-1.5 rounded bg-white text-xs hover:bg-indigo-100 border border-indigo-200 print:hidden"
                   >📋 コピー</button>
                 </div>
-                <div className="bg-white rounded-xl p-5 leading-relaxed text-sm whitespace-pre-wrap">
+                <div className="bg-white rounded-xl p-5 leading-7 text-sm whitespace-pre-line">
                   {aiSummary}
                 </div>
               </div>
