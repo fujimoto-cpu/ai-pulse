@@ -745,8 +745,7 @@
       const pct = answers.q3 || 0;
       const hours = (pct * 1.6).toFixed(1); // 月160h基準
 
-      // 具体例ガイド（%レンジに応じて・自分ごと判断しやすい質問形式）
-      // 高%帯は「今までできなかったことができるようになった」を含む
+      // 具体例ガイド（7段階・100%はビジネス変革レベル）
       const guideExamples = [
         {
           max: 9,
@@ -755,28 +754,40 @@
           color: 'bg-gray-50 border-gray-200'
         },
         {
-          max: 24,
+          max: 19,
           label: '一部の作業でAIを試してる',
-          detail: '「短いメール返信や、議事録の要約だけAIに頼んでる」「調べ物の時に時々ChatGPT/Claudeを開く」',
+          detail: '「短いメール返信や、議事録の要約だけAIに頼んでる」「調べ物の時に時々開く」',
           color: 'bg-amber-50 border-amber-200'
         },
         {
-          max: 49,
+          max: 34,
           label: '日々の業務でAIが定着',
           detail: '「メール作成・リサーチ・たたき台作りは基本AI任せ」「商品説明文や議事録は自分で書かなくなった」',
           color: 'bg-emerald-50 border-emerald-200'
         },
         {
-          max: 74,
-          label: '主要業務をAIと一緒にやってる＋できる範囲も広がってきた',
-          detail: '「企画書・提案書・データ集計までAIに作らせる」「英訳やデータ分析など、今まで時間かかってたことが秒で終わる」',
+          max: 49,
+          label: '主要業務をAIと一緒にやってる',
+          detail: '「企画書・提案書・データ集計までAIに作らせる」「自分は最終チェック役」',
+          color: 'bg-teal-50 border-teal-200'
+        },
+        {
+          max: 69,
+          label: '今までできなかったことができるようになった',
+          detail: '「多言語メールが書ける」「データ分析を一人で完結」「英訳が秒で終わる」「企画を一人で完結」',
           color: 'bg-indigo-50 border-indigo-200'
         },
         {
-          max: 100,
-          label: '今までできなかったことができる／AI前提で業務範囲が広がった',
-          detail: '「多言語メールが自分で書ける」「データ分析レポートを一人で作れる」「企画書を一人で完結できる」「新しい領域に手を出せるようになった」',
+          max: 84,
+          label: 'AI主導で業務範囲を新規領域に拡大',
+          detail: '「これまでやれなかった新業務に手を出せる」「自分の専門外でもAIと組めば成果が出せる」「ナレッジ提供する側になった」',
           color: 'bg-purple-50 border-purple-200'
+        },
+        {
+          max: 100,
+          label: 'AIネイティブ・ビジネス変革レベル',
+          detail: '「AIがメインプレイヤー・自分はディレクター」「業務プロセスを根本から再設計」「会社全体のAI活用をリード」（滅多に達成しない最高峰）',
+          color: 'bg-pink-50 border-pink-200'
         },
       ];
       const guide = guideExamples.find(g => pct <= g.max) || guideExamples[0];
@@ -816,15 +827,17 @@
             <div className="text-sm text-gray-700">{guide.detail}</div>
           </div>
 
-          {/* 全レンジの目安（小さく表示） */}
+          {/* 全レンジの目安（小さく表示・7段階） */}
           <details className="mt-3 text-xs text-gray-500">
             <summary className="cursor-pointer">すべての目安を見る</summary>
             <div className="mt-2 space-y-1.5 pl-3 border-l-2 border-gray-200">
-              <div><b>0-9%：</b>AI、まだほぼ使ってない（たまに開く程度）</div>
-              <div><b>10-24%：</b>一部の作業でAIを試してる（短いメール返信・議事録要約）</div>
-              <div><b>25-49%：</b>日々の業務でAIが定着（メール・リサーチ・たたき台）</div>
-              <div><b>50-74%：</b>主要業務をAIと一緒に＋できる範囲も広がってきた（企画書・データ分析）</div>
-              <div><b>75-100%：</b>今までできなかったことができる／業務範囲が広がった（多言語メール・分析レポート・新領域）</div>
+              <div><b>0-9%：</b>AI、まだほぼ使ってない</div>
+              <div><b>10-19%：</b>一部の作業でAIを試してる</div>
+              <div><b>20-34%：</b>日々の業務でAIが定着</div>
+              <div><b>35-49%：</b>主要業務をAIと一緒に</div>
+              <div><b>50-69%：</b>今までできなかったことができる</div>
+              <div><b>70-84%：</b>AI主導で業務範囲を新規領域に拡大</div>
+              <div><b>85-100%：</b>AIネイティブ・ビジネス変革レベル（最高峰）</div>
             </div>
           </details>
 
