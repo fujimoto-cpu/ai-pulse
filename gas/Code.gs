@@ -335,13 +335,13 @@ Claudeに「○○の提案書、議事録を元に作って」って投げる�
   return { recommendation };
 }
 
-// ============ 経営層分析＋打ち手（統合・Gemini API） ============
+// ============ 経営層：総合サマリー＋分析＋打ち手（統合・Gemini API） ============
 function generateExecAnalysis(data) {
-  if (!GEMINI_API_KEY) return { analysis: '（APIキー未設定）', nextActions: '（APIキー未設定）' };
+  if (!GEMINI_API_KEY) return { summary: '（APIキー未設定）', analysis: '（APIキー未設定）', nextActions: '（APIキー未設定）' };
   const { currentMonth, totalSaved, lastSaved, heavyRate, respRate, deptStats, initStats, troubled, unanswered, masters, trend, targets } = data;
 
   const prompt = `あなたはKONNEKT INTERNATIONAL の経営アドバイザーです。
-今月のAI活用データを見て、経営層向けに「数字の動き・課題分析」＋「来月のAI推進チーム打ち手」のセットを生成してください。
+今月のAI活用データを見て、「総合サマリー（長文）」＋「分析（簡潔）」＋「来月の打ち手」の3つを生成してください。
 
 【今月（${currentMonth || '今月'}）のデータ】
 - 合計削減時間: ${totalSaved}h / 目標 ${targets?.savedH || 100}h
@@ -356,26 +356,37 @@ function generateExecAnalysis(data) {
 ${trend ? `- 3ヶ月推移: ${trend}` : ''}
 
 【出力フォーマット（厳守）】
-以下2つを区切り線「---ACTIONS---」で分けて生成してください。
+3つを区切り線で分けて生成：パート1 → ---ANALYSIS--- → パート2 → ---ACTIONS--- → パート3
 
-▶️ パート1：分析（3-4行）
-- 数字の動き・良かったこと・課題を経営層向けに事実ベースで
-- 数字を必ず入れる・褒め言葉や精神論不要
-- 改行で読みやすく
+▶️ パート1：総合サマリー（6-10行・長文・経営層が今月を一発で把握できる総括）
+- 「今月のAI活用は○○な月だった」というナラティブで始める
+- 数字の動き＋背景の解釈＋経営的な意味合いを込める
+- 良かったこと・課題・トレンドを総合的に評価
+- 目標達成/未達を明示・自社のAI推進フェーズに対する位置付け
+- 段落分けで読みやすく（改行を入れる）
+- 最後の1-2行は経営層への問いかけ・示唆で締める
+
+---ANALYSIS---
+
+▶️ パート2：分析（3-4行・簡潔な指摘）
+- 数字の動き・良かったこと・課題を箇条書き的に
+- 数字を必ず入れる・短く要点だけ
 
 ---ACTIONS---
 
-▶️ パート2：来月の打ち手（番号付き3つ）
-1. 「誰に・何を・いつ」を明確に
+▶️ パート3：来月の打ち手（番号付き3つ）
+1. 誰に・何を・いつ
 2. 困ってる人への個別サポートを必ず1つ含める
-3. 各1-2行で簡潔に・経営層に「動いてる」と思わせる`;
+3. 各1-2行で簡潔に`;
 
-  const fullText = callGemini(prompt, 2000);
-  const parts = fullText.split('---ACTIONS---');
-  return {
-    analysis: (parts[0] || '').trim(),
-    nextActions: (parts[1] || fullText).trim()
-  };
+  const fullText = callGemini(prompt, 3000);
+  const partsA = fullText.split('---ANALYSIS---');
+  const summary = (partsA[0] || '').trim();
+  const rest = partsA[1] || '';
+  const partsB = rest.split('---ACTIONS---');
+  const analysis = (partsB[0] || '').trim();
+  const nextActions = (partsB[1] || '').trim();
+  return { summary, analysis, nextActions };
 }
 
 // ============ Gemini API 呼び出し ============
