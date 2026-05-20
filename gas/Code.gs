@@ -335,28 +335,47 @@ Claudeに「○○の提案書、議事録を元に作って」って投げる�
   return { recommendation };
 }
 
-// ============ 経営層分析生成（Claude API） ============
+// ============ 経営層分析＋打ち手（統合・Gemini API） ============
 function generateExecAnalysis(data) {
-  if (!GEMINI_API_KEY) return { analysis: '（APIキー未設定）' };
-  const { totalSaved, lastSaved, heavyRate, respRate, deptStats, initStats } = data;
+  if (!GEMINI_API_KEY) return { analysis: '（APIキー未設定）', nextActions: '（APIキー未設定）' };
+  const { currentMonth, totalSaved, lastSaved, heavyRate, respRate, deptStats, initStats, troubled, unanswered, masters, trend, targets } = data;
 
-  const prompt = `あなたはAI経営アナリストです。KONNEKT INTERNATIONAL の今月のAI活用データを見て、経営層向けに前月比の変化点を3-5個、定量的に指摘してください。
+  const prompt = `あなたはKONNEKT INTERNATIONAL の経営アドバイザーです。
+今月のAI活用データを見て、経営層向けに「数字の動き・課題分析」＋「来月のAI推進チーム打ち手」のセットを生成してください。
 
-【今月】合計時短=${totalSaved}h / ヘビーユーザー率=${heavyRate}% / 回答率=${respRate}%
-【先月】合計時短=${lastSaved}h
-【差分】${(totalSaved - lastSaved).toFixed(1)}h
+【今月（${currentMonth || '今月'}）のデータ】
+- 合計削減時間: ${totalSaved}h / 目標 ${targets?.savedH || 100}h
+- AI浸透率: ${heavyRate}% / 目標 ${targets?.heavyRate || 70}%
+- 回答率: ${respRate}%
+- 困ってる人: ${(troubled || []).join('・') || 'なし'}
+- 未回答者: ${(unanswered || []).join('・') || 'なし'}
+- AI伝説/マスター達成者: ${(masters || []).join('・') || 'なし'}
+- 先月比: ${(totalSaved - lastSaved).toFixed(1)}h
+- 部署別: ${(deptStats || []).map(d => `${d.dept}:${d.saved.toFixed(1)}h(${d.count}名)`).join(', ')}
+- 施策実施率: ${(initStats || []).map(i => `${i.name}:${i.rate}%`).join(', ')}
+${trend ? `- 3ヶ月推移: ${trend}` : ''}
 
-【部署別】${deptStats.map(d => `${d.dept}:${d.saved.toFixed(1)}h(${d.count}名)`).join(', ')}
-【施策実施率】${initStats.map(i => `${i.name}:${i.rate}%(${i.did}名)`).join(', ')}
+【出力フォーマット（厳守）】
+以下2つを区切り線「---ACTIONS---」で分けて生成してください。
 
-出力ルール:
-- 経営判断に資する事実ベースの分析（褒め言葉や精神論は不要）
-- 数字を必ず入れる
-- 3-5個の箇条書き
-- 最後に1行で「経営への提言」`;
+▶️ パート1：分析（3-4行）
+- 数字の動き・良かったこと・課題を経営層向けに事実ベースで
+- 数字を必ず入れる・褒め言葉や精神論不要
+- 改行で読みやすく
 
-  const analysis = callGemini(prompt, 1500);
-  return { analysis };
+---ACTIONS---
+
+▶️ パート2：来月の打ち手（番号付き3つ）
+1. 「誰に・何を・いつ」を明確に
+2. 困ってる人への個別サポートを必ず1つ含める
+3. 各1-2行で簡潔に・経営層に「動いてる」と思わせる`;
+
+  const fullText = callGemini(prompt, 2000);
+  const parts = fullText.split('---ACTIONS---');
+  return {
+    analysis: (parts[0] || '').trim(),
+    nextActions: (parts[1] || fullText).trim()
+  };
 }
 
 // ============ Gemini API 呼び出し ============

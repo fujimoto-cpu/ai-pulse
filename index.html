@@ -1531,19 +1531,23 @@
 
       const generateAi = async () => {
         if (!webhookUrl) {
-          setAiAnalysis(`【サンプル分析】
-今月の全社合計時短時間は ${totalSaved.toFixed(1)}h（先月比 ${(totalSaved - lastSaved > 0 ? '+' : '')}${(totalSaved - lastSaved).toFixed(1)}h）。
-ヘビーユーザー率は ${heavyRate}% で、特に「${deptStats.sort((a,b)=>b.saved-a.saved)[0]?.dept}」部署の貢献が大きい。
-施策実施率は最大 ${Math.max(...initStats.map(i=>i.rate), 0)}% で、まだ伸びしろあり。
-Webhook URL未設定のため、これはサンプル文です。`);
+          setAiAnalysis(`【サンプル分析】\n今月の全社合計削減時間は ${totalSaved.toFixed(1)}h（先月比 ${(totalSaved - lastSaved > 0 ? '+' : '')}${(totalSaved - lastSaved).toFixed(1)}h）。\nAI浸透率は ${heavyRate}% で「${(deptStats.sort((a,b)=>b.saved-a.saved)[0]?.dept) || '-'}」部署が活発。\n（Webhook URL未設定のためサンプル）`);
+          setNextActions(`1. 困ってる${seriouslyTroubled.length}名（${seriouslyTroubled.map(s => s.name).join('・') || '対象なし'}）に火曜10:00個別DM\n2. マスター達成者（${mastersList.slice(0, 3).join('・') || '対象なし'}）にベスプラ共有会を打診\n3. 未回答${unanswered.length}名へリマインドDM`);
           return;
         }
         setAiLoading(true);
         try {
           const res = await callGas(webhookUrl, 'generate_exec_analysis', {
-            currentMonth, lastMonth, totalSaved, lastSaved, heavyRate, respRate, deptStats, initStats
+            currentMonth, lastMonth, totalSaved, lastSaved, heavyRate, respRate,
+            deptStats, initStats,
+            troubled: seriouslyTroubled.map(s => `${s.name}(${s.troubleNote || ''})`),
+            unanswered: unanswered.map(u => u.name),
+            masters: mastersList,
+            trend: trendData.map(t => `${t.month}:${t.saved}h/${t.heavyRate}%`).join(' → '),
+            targets: { savedH: targetSavedH, heavyRate: targetHeavyRate, didable: totalDidableTags, targetDidable }
           });
           setAiAnalysis(res.analysis || 'AI分析を生成できませんでした');
+          setNextActions(res.nextActions || '');
         } catch (e) {
           setAiAnalysis(`エラー: ${e.message}`);
         }
@@ -1672,10 +1676,7 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
               </div>
               <div className="flex flex-wrap gap-2">
                 <button onClick={generateAi} disabled={aiLoading} className="px-3 py-2 rounded bg-indigo-600 text-white text-sm disabled:opacity-50">
-                  {aiLoading ? '生成中...' : '🤖 AI分析'}
-                </button>
-                <button onClick={generateNextActionsHandler} disabled={actionsLoading} className="px-3 py-2 rounded bg-pink-600 text-white text-sm disabled:opacity-50">
-                  {actionsLoading ? '生成中...' : '🎯 来月の打ち手'}
+                  {aiLoading ? '生成中...' : '🤖 AI分析＋打ち手'}
                 </button>
                 <button onClick={generateDigest} disabled={digestLoading} className="px-3 py-2 rounded bg-purple-600 text-white text-sm disabled:opacity-50">
                   {digestLoading ? '生成中...' : '📄 ダイジェスト生成'}
