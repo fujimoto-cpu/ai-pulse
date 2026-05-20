@@ -39,6 +39,7 @@ function doPost(e) {
     if (action === 'generate_cat_comment') return jsonOut(generateCatComment(data));
     if (action === 'generate_recommendation') return jsonOut(generateRecommendation(data));
     if (action === 'generate_exec_analysis') return jsonOut(generateExecAnalysis(data));
+    if (action === 'generate_next_actions') return jsonOut(generateNextActions(data));
     if (action === 'generate_monthly_digest') return jsonOut(generateMonthlyDigest(data));
     if (action === 'send_to_slack') return jsonOut(sendToSlack(data));
     if (action === 'update_master') return jsonOut(updateMaster(data));
@@ -380,6 +381,44 @@ function callGemini(prompt, maxTokens) {
     throw new Error('Geminiレスポンスが空です: ' + JSON.stringify(body));
   }
   return body.candidates[0].content.parts[0].text;
+}
+
+// ============ 来月の打ち手（AI推進チームのアクション）生成 ============
+function generateNextActions(data) {
+  if (!GEMINI_API_KEY) {
+    return { actions: '1. 困ってる人にDMで個別サポート\n2. 未回答者に火曜DMで声がけ\n3. マスター達成者にナレッジ共有依頼' };
+  }
+  const { currentMonth, totalSaved, heavyRate, respRate, troubled, unanswered, masters, deptStats, trend } = data;
+
+  const prompt = `あなたはKONNEKT INTERNATIONALのAI推進チームに助言する経営アドバイザーです。
+今月のデータを見て、AI推進チーム（藤本ゆりこ・引地瑞生）が「来月やるべき具体的アクション」を3つ提案してください。
+
+【今月のデータ】
+- 月：${currentMonth}
+- 合計削減時間: ${totalSaved}h
+- AI浸透率（毎日活用）: ${heavyRate}%
+- 回答率: ${respRate}%
+- 困ってる人: ${(troubled || []).join('・') || 'なし'}
+- 未回答者: ${(unanswered || []).join('・') || 'なし'}
+- AI伝説/マスター達成者: ${(masters || []).join('・') || 'なし'}
+- 部署別: ${(deptStats || []).map(d => `${d.dept}=${d.saved.toFixed(1)}h`).join(', ')}
+${trend ? `- 3ヶ月推移: ${trend}` : ''}
+
+【出力ルール】
+- 番号付きで3つの具体アクション
+- 各アクション1-2行で簡潔に
+- 「誰に・何を・いつ」を明確に
+- AI推進チームが実際にやれること（DM・MTG・配布資料など）
+- 困ってる人への個別サポートを必ず1つ含める
+- 経営層に「AI推進チーム動いてるな」と思わせる内容
+
+出力例：
+1. 困ってる3名（菊田さん・植田さん・佐生さん）に火曜10:00個別DM → プロンプト集の活用ハンズオン誘導
+2. マスター達成の藤本さん・川田さんに「ベスプラ共有会（30分）」を6月第2週で打診
+3. 未回答5名向け：6月最初の水曜にリマインドDM＋「3分版簡易フォーム」用意`;
+
+  const actions = callGemini(prompt, 700);
+  return { actions };
 }
 
 // ============ 月次ダイジェスト生成 ============
