@@ -338,17 +338,32 @@ ${activeInitiatives.map(i => `- ${i.name}: ${i.detail || ''}`).join('\n') || '�
 プロンプト例："過去のAM 26SS企画書のトンマナで、kemio抹茶26AWの企画書たたき台を3案"
 準備10分・運用1分。試しに金曜夕方やってみない？✨`;
 
-  const recommendation = callGemini(prompt, 800);
-  return { recommendation };
+  const rawText = callGemini(prompt, 800);
+  // 空チェック・JSONじゃないただのテキスト想定（既存仕様）
+  const cleaned = (rawText || '').trim();
+  if (!cleaned || cleaned.length < 20) {
+    Logger.log('Recommendation empty: ' + rawText);
+    return {
+      recommendation: `💡 来月のおすすめ：${name}さんの今月の活用パターンを伸ばす\n今月の使い方をベースに、Claude/Coworkで次の業務にもAIを広げてみよう。具体的にはメール返信や議事録要約のような短時間タスクで「これも頼める」と気づくのがコツ。\nプロンプト例："このタスクをAIに頼むとしたら、どんな指示文がベスト？"\n所要時間5分。気軽に試してみてね✨`
+    };
+  }
+  return { recommendation: cleaned };
 }
 
-// ============ 経営層：総合サマリー＋分析＋打ち手（統合・Gemini API） ============
+// ============ 経営層：総合サマリー＋分析＋打ち手（JSON出力で確実化） ============
 function generateExecAnalysis(data) {
   if (!GEMINI_API_KEY) return { summary: '（APIキー未設定）', analysis: '（APIキー未設定）', nextActions: '（APIキー未設定）' };
   const { currentMonth, totalSaved, lastSaved, heavyRate, respRate, deptStats, initStats, troubled, unanswered, masters, trend, targets } = data;
 
-  const prompt = `あなたはKONNEKT INTERNATIONAL の経営アドバイザーです。
-今月のAI活用データを見て、「総合サマリー（長文）」＋「分析（簡潔）」＋「来月の打ち手」の3つを生成してください。
+  const prompt = `あなたはKONNEKT INTERNATIONAL の経営アドバイザー兼AI推進顧問です。
+社長（由羽さん）への月次報告書として、「総合サマリー（経営報告書レベル長文）」＋「分析（簡潔）」＋「来月の打ち手」の3つを生成してください。
+
+【KONNEKT のAI推進の経緯・ミッション】
+- 社長（由羽さん）からAI推進チーム（藤本ゆりこ・引地瑞生）への直接ミッション
+- 目標：「AI活用による粗利向上・作業時間削減を可視化」「全社員（18名）がAIを日常業務で使いこなせる状態にする」
+- AI推進フェーズ：Phase 0（組織設計）→ Phase 1（基盤整備）→ Phase 2（ツール連携：Slack/GWS/Shopify）→ Phase 3（業務AI化）→ Phase 4（定着・KPI測定）
+- 現在はPhase 4の入口・このAI Pulseアプリで月次KPI測定を開始した段階
+- 旧Forms設計→アプリ化で運用工数削減＋データ蓄積を実現
 
 【今月（${currentMonth || '今月'}）のデータ】
 - 合計削減時間: ${totalSaved}h / 目標 ${targets?.savedH || 100}h
@@ -362,38 +377,74 @@ function generateExecAnalysis(data) {
 - 施策実施率: ${(initStats || []).map(i => `${i.name}:${i.rate}%`).join(', ')}
 ${trend ? `- 3ヶ月推移: ${trend}` : ''}
 
-【出力フォーマット（厳守）】
-3つを区切り線で分けて生成：パート1 → ---ANALYSIS--- → パート2 → ---ACTIONS--- → パート3
+【出力フォーマット（厳守・必ずJSON形式のみ）】
+以下のJSON形式だけを返してください。前後に説明文・コードブロック記号は不要。
 
-▶️ パート1：総合サマリー（6-10行・長文・経営層が今月を一発で把握できる総括）
+{
+  "summary": "総合サマリー本文（8-12行の長文経営報告書レベル）",
+  "analysis": "分析テキスト（3-4行・要点）",
+  "nextActions": "1. アクション1\\n2. アクション2\\n3. アクション3"
+}
+
+【summary（総合サマリー）の作り方】
 - 「今月のAI活用は○○な月だった」というナラティブで始める
+- KONNEKTのAI推進フェーズ（現在Phase 4=定着・KPI測定）に対する今月の位置付けを明示
+- 目標vs実績の達成率を必ず触れる（削減h・浸透率・新規創出）
 - 数字の動き＋背景の解釈＋経営的な意味合いを込める
 - 良かったこと・課題・トレンドを総合的に評価
-- 目標達成/未達を明示・自社のAI推進フェーズに対する位置付け
-- 段落分けで読みやすく（改行を入れる）
-- 最後の1-2行は経営層への問いかけ・示唆で締める
+- ROIの観点で投資対効果を経営判断材料として提示
+- 段落分けで読みやすく（\\nで改行）
+- 最後の1-2行で「経営層への問いかけ・来月の方向性」を提示
+- 社長報告として完成度の高い文章（敬語・丁寧）
 
----ANALYSIS---
+【analysis（分析）の作り方】
+- 数字の動き・良かったこと・課題を箇条書き風に
+- 数字を必ず入れる
+- 短く要点だけ・3-4行
+- 改行は\\n
 
-▶️ パート2：分析（3-4行・簡潔な指摘）
-- 数字の動き・良かったこと・課題を箇条書き的に
-- 数字を必ず入れる・短く要点だけ
+【nextActions（来月の打ち手）の作り方】
+- 番号付き3つ
+- 「誰に・何を・いつ・どうやって」を明確に
+- 困ってる人への個別サポートを必ず1つ含める
+- 各1-2行で簡潔に・経営層に「動いてる」と思わせる
+- ツール名・所要時間を明示
+- 改行は\\n
 
----ACTIONS---
+【重要】
+- 純粋なJSON文字列のみ返す
+- 余計な説明・前置き・コードブロック記号（\`\`\`）禁止
+- summary・analysis・nextActions の3キー必須`;
 
-▶️ パート3：来月の打ち手（番号付き3つ）
-1. 誰に・何を・いつ
-2. 困ってる人への個別サポートを必ず1つ含める
-3. 各1-2行で簡潔に`;
+  const fullText = callGemini(prompt, 4000);
 
-  const fullText = callGemini(prompt, 3000);
-  const partsA = fullText.split('---ANALYSIS---');
-  const summary = (partsA[0] || '').trim();
-  const rest = partsA[1] || '';
-  const partsB = rest.split('---ACTIONS---');
-  const analysis = (partsB[0] || '').trim();
-  const nextActions = (partsB[1] || '').trim();
-  return { summary, analysis, nextActions };
+  // JSON抽出（コードブロック記号や前置きを除去）
+  let cleaned = fullText.trim();
+  // ```json ... ``` を取り除く
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  // 最初の { から最後の } までを抽出
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+
+  try {
+    const obj = JSON.parse(cleaned);
+    return {
+      summary: obj.summary || '',
+      analysis: obj.analysis || '',
+      nextActions: obj.nextActions || ''
+    };
+  } catch (e) {
+    // JSONパース失敗時：原文を summary に丸ごと入れる（少しでも何か表示）
+    Logger.log('JSON parse failed: ' + e.message + ' | raw: ' + fullText.substring(0, 500));
+    return {
+      summary: fullText,
+      analysis: '（JSON出力フォーマットエラー・summaryに原文を表示中）',
+      nextActions: '（再生成してください）'
+    };
+  }
 }
 
 // ============ Gemini API 呼び出し ============
