@@ -69,105 +69,57 @@
       RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
     } = Recharts;
 
-    // ============ 6段階猫キャラ定義（v6ピクセルベース） ============
+    // ============ 6段階猫キャラ定義（累積XPベース・PNG画像版） ============
     const CAT_STAGES = [
       {
-        id: 'egg', name: 'たまご', minScore: 0, maxScore: 19,
-        pixelColor: '#D4C5A0', bgColor: '#FFFBEB', borderColor: '#FCD34D',
+        id: 'egg', name: 'たまご', minXp: 0, maxXp: 19,
+        image: 'images/cat_egg.png',
+        pixelColor: '#D4A017', bgColor: '#FFFBEB', borderColor: '#FCD34D',
         message: 'AIのたまご🥚 もうすぐ孵化するよ！',
-        pixels: [
-          '00011100',
-          '00111110',
-          '01111111',
-          '01111111',
-          '01111111',
-          '01111111',
-          '00111110',
-          '00011100',
-        ]
       },
       {
-        id: 'cracked', name: 'ひびわれたまご', minScore: 20, maxScore: 39,
+        id: 'cracked', name: 'ひびわれたまご', minXp: 20, maxXp: 49,
+        image: 'images/cat_cracked.png',
         pixelColor: '#C9A876', bgColor: '#FEF3C7', borderColor: '#F59E0B',
         message: '殻にヒビが入ってきたにゃ✨ もうすぐ生まれる！',
-        pixels: [
-          '00011100',
-          '00111110',
-          '01100111',
-          '01111001',
-          '01111111',
-          '01001110',
-          '00111110',
-          '00011100',
-        ]
       },
       {
-        id: 'chick', name: 'にゃんこ芽生え', minScore: 40, maxScore: 54,
-        pixelColor: '#374151', bgColor: '#F0FDF4', borderColor: '#86EFAC',
+        id: 'chick', name: 'にゃんこ芽生え', minXp: 50, maxXp: 99,
+        image: 'images/cat_chick.png',
+        pixelColor: '#DB2777', bgColor: '#FCE7F3', borderColor: '#F9A8D4',
         message: 'ちょっとずつAI使い始めてるにゃ🌱',
-        pixels: [
-          '00111100',
-          '01101110',
-          '01111110',
-          '00111100',
-          '01111110',
-          '01100110',
-          '01000010',
-          '00000000',
-        ]
       },
       {
-        id: 'kitten', name: 'AIにゃんこ', minScore: 55, maxScore: 69,
-        pixelColor: '#1D4ED8', bgColor: '#EFF6FF', borderColor: '#93C5FD',
+        id: 'cat', name: 'AIにゃんこ', minXp: 100, maxXp: 149,
+        image: 'images/cat_cat.png',
+        pixelColor: '#E11D48', bgColor: '#FFE4E6', borderColor: '#FB7185',
         message: 'AIを使いこなせてきてるにゃ😺',
-        pixels: [
-          '01000010',
-          '11100111',
-          '11111111',
-          '01111110',
-          '00111100',
-          '01011010',
-          '01000010',
-          '10000001',
-        ]
       },
       {
-        id: 'cat', name: 'AIマスターにゃん', minScore: 70, maxScore: 84,
-        pixelColor: '#6D28D9', bgColor: '#F5F3FF', borderColor: '#C4B5FD',
-        message: 'AIマスターにゃん🚀✨ すごすぎる！',
-        pixels: [
-          '01000010',
-          '11100111',
-          '11111111',
-          '11111111',
-          '01111110',
-          '11111111',
-          '11011011',
-          '11000011',
-        ]
+        id: 'master', name: 'AIマスター', minXp: 150, maxXp: 199,
+        image: 'images/cat_master.png',
+        pixelColor: '#1D4ED8', bgColor: '#DBEAFE', borderColor: '#93C5FD',
+        message: 'AIマスターにゃ🚀 すごすぎる！',
       },
       {
-        id: 'master', name: 'AI伝説にゃん', minScore: 85, maxScore: 100,
+        id: 'legend', name: 'AI伝説', minXp: 200, maxXp: 99999,
+        image: 'images/cat_legend.png',
         pixelColor: '#D4A017', bgColor: '#FFF4CC', borderColor: '#FFD700',
         message: 'AIの神にゃ👑 みんなのお手本！',
-        pixels: [
-          '10100101',
-          '11111111',
-          '11100111',
-          '11111111',
-          '11111111',
-          '11111111',
-          '11011011',
-          '11000011',
-        ]
       },
     ];
 
-    const getCatStage = (score) => {
-      return CAT_STAGES.find(s => score >= s.minScore && score <= s.maxScore) || CAT_STAGES[0];
+    const getCatStage = (cumulativeXp) => {
+      return CAT_STAGES.find(s => cumulativeXp >= s.minXp && cumulativeXp <= s.maxXp) || CAT_STAGES[0];
     };
 
-    // ============ ピクセルアート描画 ============
+    // 累積XP→次のキャラまで何XP（次のキャラ名は返さない・ネタバレ防止）
+    const getNextThreshold = (cumulativeXp) => {
+      const next = CAT_STAGES.find(s => s.minXp > cumulativeXp);
+      return next ? { needed: next.minXp - cumulativeXp, nextMinXp: next.minXp } : null;
+    };
+
+    // ============ キャラ画像表示 ============
     const PixelCat = ({ stage, size = 'md', highlight = false }) => {
       const sizes = { sm: 'w-16 h-16', md: 'w-32 h-32', lg: 'w-48 h-48' };
       return (
@@ -175,17 +127,7 @@
           className={`${sizes[size]} p-2 rounded-2xl border-2 ${highlight ? 'ring-4 ring-yellow-300' : ''}`}
           style={{ backgroundColor: stage.bgColor, borderColor: stage.borderColor }}
         >
-          <div className="pixel-grid w-full h-full">
-            {stage.pixels.flatMap((row, ri) =>
-              row.split('').map((cell, ci) => (
-                <div
-                  key={`${ri}-${ci}`}
-                  className="pixel-cell"
-                  style={{ backgroundColor: cell === '1' ? stage.pixelColor : 'transparent' }}
-                />
-              ))
-            )}
-          </div>
+          <img src={stage.image} alt={stage.name} className="w-full h-full object-contain" />
         </div>
       );
     };
@@ -234,7 +176,8 @@
       SAMPLE_MASTER.names.forEach((p, i) => {
         months.forEach((m, mi) => {
           if (Math.random() < 0.85) {
-            const base = 30 + (mi * 5) + (i % 6) * 8 + Math.floor(Math.random() * 15);
+            // 月次XP（0-30）：トレンドに沿って上昇＋個人差＋ノイズ
+            const base = 4 + (mi * 2) + (i % 6) * 2 + Math.floor(Math.random() * 6);
             out.push({
               timestamp: `${m}-15T10:00:00`,
               month: m,
@@ -242,15 +185,17 @@
               department: p.department,
               q1: ['ほぼ毎日','週2-3日','週1日','ほぼ使ってない'][Math.floor(Math.random()*4)],
               q2: ['メール作成','議事録','リサーチ','企画書'],
-              q3: (Math.floor(Math.random()*15) + 2) * 5, // 0-95% (step 5)
+              q3: (Math.floor(Math.random()*15) + 2) * 5,
               q4: ['😫','😐','😊','🔥'][Math.floor(Math.random()*4)],
-              q5: ['プロンプト改善','新ツール試す','チーム共有','現状維持'][Math.floor(Math.random()*4)],
+              q5: ['個人向上','チーム巻き込み','新ツール開拓','現状維持'][Math.floor(Math.random()*4)],
               q6: ['😫','😐','😊','🔥'][Math.floor(Math.random()*4)],
+              q4Note: '',
+              q6Note: '',
               q7: i % 3 === 0 ? '議事録自動化でMTG時間が30分→10分になった' : '',
               initiatives: ['I001','I002'],
-              didable: '提案資料の初稿をAIに任せられるようになった',
+              didable: i % 4 === 0 ? '提案資料の初稿をAIに任せられるようになった' : '',
               comment: '',
-              score: Math.min(100, Math.max(0, base))
+              score: Math.min(30, Math.max(0, base))
             });
           }
         });
@@ -277,19 +222,29 @@
       return await res.json();
     };
 
-    // ============ スコア計算 ============
+    // ============ XP計算（月最大30XP） ============
     const calcScore = (ans, master) => {
-      let score = 0;
-      score += { 'ほぼ毎日': 25, '週2-3日': 18, '週1日': 10, 'ほぼ使ってない': 3 }[ans.q1] || 0;
-      score += Math.min(20, (ans.q2 || []).length * 5);
-      score += Math.min(20, Math.round((ans.q3 || 0) / 5));
-      score += { '😫': 0, '😐': 5, '😊': 10, '🔥': 15 }[ans.q4] || 0;
-      // Q5: マスター（q5Options）からスコア取得・なければフォールバック
-      const q5Map = (master?.q5Options || []).reduce((m, o) => { m[o.value] = o.score || 0; return m; }, {});
-      const q5Fallback = { '個人向上': 10, 'チーム巻き込み': 10, '新ツール開拓': 10, '現状維持': 3 };
-      score += (q5Map[ans.q5] ?? q5Fallback[ans.q5]) || 0;
-      score += { '😫': 0, '😐': 3, '😊': 7, '🔥': 10 }[ans.q6] || 0;
-      return Math.min(100, Math.max(0, score));
+      let xp = 0;
+      // Q1 使用頻度: 0/2/5/10
+      xp += { 'ほぼ毎日': 10, '週2-3日': 5, '週1日': 2, 'ほぼ使ってない': 0 }[ans.q1] || 0;
+      // Q2 場面（複数選択）: 1個1XP・上限6
+      xp += Math.min(6, (ans.q2 || []).length);
+      // Q3 効率化%: pct/14（100%→7XP・端数切捨）
+      xp += Math.floor((ans.q3 || 0) / 14);
+      // Q4 成長実感: 0/1/2/3
+      xp += { '😫': 0, '😐': 1, '😊': 2, '🔥': 3 }[ans.q4] || 0;
+      // Q5 方向性: 現状維持=1・その他選択=2
+      if (ans.q5) xp += (ans.q5 === '現状維持') ? 1 : 2;
+      // Q6 共有: 0/1/2
+      xp += { '😫': 0, '😐': 1, '😊': 2, '🔥': 2 }[ans.q6] || 0;
+      return Math.max(0, Math.min(30, xp));
+    };
+
+    // 累積XP（その人の過去全回答の合計）
+    const calcCumulativeXp = (responses, name) => {
+      return (responses || [])
+        .filter(r => r.name === name)
+        .reduce((sum, r) => sum + (r.score || 0), 0);
     };
 
     // ============ 紙吹雪（長め・3波） ============
@@ -486,7 +441,7 @@
     );
 
     // ============ チェックイン（アンケート） ============
-    const Survey = ({ master, webhookUrl, onComplete }) => {
+    const Survey = ({ master, responses, webhookUrl, onComplete }) => {
       const [step, setStep] = useState(0);
       const [answers, setAnswers] = useState({
         name: '', q1: '', q2: [], q3: 0, q4: '', q4Note: '', q5: '', q6: '', q6Note: '', q7: '',
@@ -508,12 +463,16 @@
       const submit = async () => {
         setSubmitting(true);
         const score = calcScore(answers, master);
-        const stage = getCatStage(score);
+        // 累積XP = これまでのscore合計 + 今回のscore
+        const previousCumulativeXp = calcCumulativeXp(responses, answers.name);
+        const cumulativeXp = previousCumulativeXp + score;
+        const stage = getCatStage(cumulativeXp);
         const person = master.names.find(n => n.name === answers.name);
         const payload = {
           ...answers,
           department: person?.department || '不明',
           score,
+          cumulativeXp,
           timestamp: new Date().toISOString(),
           month: new Date().toISOString().slice(0,7)
         };
@@ -527,15 +486,21 @@
           }
         }
 
-        setResult({ score, stage, payload });
+        setResult({ score, cumulativeXp, previousCumulativeXp, stage, payload });
         fireConfetti();
         setSubmitting(false);
 
-        // AIコメント生成
+        // AIコメント生成（前月の回答内容を含めて送る）
         if (webhookUrl) {
           setAiLoading(true);
           try {
-            const res = await callGas(webhookUrl, 'generate_cat_comment', { name: answers.name, score, currentMonth: payload.month });
+            const res = await callGas(webhookUrl, 'generate_cat_comment', {
+              name: answers.name,
+              score,
+              cumulativeXp,
+              currentMonth: payload.month,
+              currentAnswers: payload
+            });
             setAiComment(res.comment || stage.message);
           } catch {
             setAiComment(stage.message);
@@ -671,6 +636,17 @@
     const Q3Step = ({ answers, update, onNext, onBack }) => {
       const pct = answers.q3 || 0;
       const hours = (pct * 1.6).toFixed(1); // 月160h基準
+
+      // 具体例ガイド（%レンジに応じて）
+      const guideExamples = [
+        { max: 9, label: 'ほぼ変化なし', detail: 'たまに使った程度／いつも通り手作業中心', color: 'bg-gray-50 border-gray-200' },
+        { max: 24, label: '少し時短実感', detail: '週1〜2回の業務で活用（短いメール返信・議事録要約・簡単な調べ物）', color: 'bg-amber-50 border-amber-200' },
+        { max: 49, label: '定常業務で活用', detail: '日々のメール・リサーチ・たたき台・商品説明文作成にAI使えてる', color: 'bg-emerald-50 border-emerald-200' },
+        { max: 74, label: '主要業務でフル活用', detail: '企画書・提案書・データ集計・コピー量産にAIフル投入', color: 'bg-indigo-50 border-indigo-200' },
+        { max: 100, label: 'AI前提のワークスタイル', detail: '人がやる作業がほぼなくなった／AIなしでは仕事できないレベル', color: 'bg-purple-50 border-purple-200' },
+      ];
+      const guide = guideExamples.find(g => pct <= g.max) || guideExamples[0];
+
       return (
         <div>
           <h2 className="text-xl font-bold mb-1">Q3. 今月、AIで業務効率化できた割合は？</h2>
@@ -698,14 +674,27 @@
               <span>0%</span><span>50%</span><span>100%</span>
             </div>
           </div>
-          <p className="text-sm text-center text-gray-600 mb-4">
-            {pct === 0 && 'まだ実感なし、来月チャレンジしてみよう🌱'}
-            {pct > 0 && pct <= 15 && '少しずつ効率化できてるね！'}
-            {pct > 15 && pct <= 40 && 'いい感じに使えてる👏'}
-            {pct > 40 && pct <= 70 && 'かなりAIを使いこなしてる🔥'}
-            {pct > 70 && 'すごい！もう余裕でAI使いこなしてる⚡'}
-          </p>
-          <div className="flex justify-between">
+
+          {/* 具体例ガイド（動的に切り替わる） */}
+          <div className={`p-4 rounded-xl border-2 transition-all ${guide.color}`}>
+            <div className="text-xs text-gray-500 mb-1">こんな感覚 👇</div>
+            <div className="font-bold text-base mb-1">{guide.label}</div>
+            <div className="text-sm text-gray-700">{guide.detail}</div>
+          </div>
+
+          {/* 全レンジの目安（小さく表示） */}
+          <details className="mt-3 text-xs text-gray-500">
+            <summary className="cursor-pointer">すべての目安を見る</summary>
+            <div className="mt-2 space-y-1 pl-3 border-l-2 border-gray-200">
+              <div><b>0-9%：</b>ほぼ変化なし／たまに使った程度</div>
+              <div><b>10-24%：</b>週1〜2回（短いメール・議事録要約）</div>
+              <div><b>25-49%：</b>定常業務で活用（日々のメール・リサーチ・たたき台）</div>
+              <div><b>50-74%：</b>主要業務でフル活用（企画書・提案書・データ集計）</div>
+              <div><b>75-100%：</b>AI前提のワークスタイル</div>
+            </div>
+          </details>
+
+          <div className="flex justify-between mt-6">
             <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
             <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
           </div>
@@ -924,31 +913,56 @@
 
     // ============ 回答結果画面 ============
     const SurveyResult = ({ result, aiComment, aiLoading, onComplete }) => {
-      const { score, stage } = result;
-      const [displayScore, setDisplayScore] = useState(0);
+      const { score, cumulativeXp, previousCumulativeXp, stage } = result;
+      const [displayXp, setDisplayXp] = useState(0);
+      const [displayCumXp, setDisplayCumXp] = useState(previousCumulativeXp || 0);
+      const nextThreshold = getNextThreshold(cumulativeXp);
 
-      // スコアカウントアップ（0→現在値、約2秒）
+      // 月次XPカウントアップ
       useEffect(() => {
-        const duration = 2000;
+        const duration = 1500;
         const startTime = Date.now();
         const tick = () => {
           const elapsed = Date.now() - startTime;
           const progress = Math.min(1, elapsed / duration);
-          // easeOutQuart
           const eased = 1 - Math.pow(1 - progress, 4);
-          setDisplayScore(Math.round(score * eased));
+          setDisplayXp(Math.round(score * eased));
           if (progress < 1) requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
       }, [score]);
 
+      // 累積XPカウントアップ（前月累積→今月累積、月次XPアニメ後に開始）
+      useEffect(() => {
+        const delay = 1200;
+        const duration = 1500;
+        const start = previousCumulativeXp || 0;
+        const end = cumulativeXp;
+        const startAt = Date.now() + delay;
+        const tick = () => {
+          const now = Date.now();
+          if (now < startAt) { requestAnimationFrame(tick); return; }
+          const elapsed = now - startAt;
+          const progress = Math.min(1, elapsed / duration);
+          const eased = 1 - Math.pow(1 - progress, 4);
+          setDisplayCumXp(Math.round(start + (end - start) * eased));
+          if (progress < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }, [cumulativeXp, previousCumulativeXp]);
+
+      // バー進捗（次のキャラまで）
+      const barPct = nextThreshold
+        ? Math.min(100, Math.round((cumulativeXp - stage.minXp) / (nextThreshold.nextMinXp - stage.minXp) * 100))
+        : 100;
+
       return (
         <div className="max-w-2xl mx-auto px-4 py-6">
           <div className="bg-white rounded-2xl border p-8 text-center slide-in">
-            <h2 className="text-sm text-gray-500 mb-2">🎉 今月のあなたのスコア</h2>
+            <h2 className="text-sm text-gray-500 mb-2">🎉 今月のXP獲得！</h2>
             <div className="my-4 score-reveal">
-              <div className="text-8xl font-bold" style={{ color: stage.pixelColor }}>{displayScore}</div>
-              <div className="text-sm text-gray-500 mt-1">/ 100pt</div>
+              <div className="text-7xl font-bold" style={{ color: stage.pixelColor }}>+{displayXp}</div>
+              <div className="text-sm text-gray-500 mt-1">XP（月最大30XP）</div>
             </div>
 
             <div className="flex justify-center my-6 cat-appear">
@@ -957,6 +971,29 @@
               </div>
             </div>
             <h3 className="text-2xl font-bold mt-3 cat-appear" style={{ color: stage.pixelColor }}>{stage.name}</h3>
+
+            {/* 累積XPバー */}
+            <div className="mt-6 comment-fade">
+              <div className="flex justify-between items-baseline mb-2">
+                <span className="text-xs text-gray-500">累積XP</span>
+                <span className="text-2xl font-bold" style={{ color: stage.pixelColor }}>
+                  {displayCumXp}<span className="text-sm text-gray-400"> XP</span>
+                </span>
+              </div>
+              <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-1000"
+                  style={{ width: `${barPct}%`, backgroundColor: stage.pixelColor }}
+                />
+              </div>
+              {nextThreshold ? (
+                <p className="text-xs text-gray-500 mt-2">
+                  次のキャラまであと <span className="font-bold" style={{ color: stage.pixelColor }}>{nextThreshold.needed} XP</span> 🎁
+                </p>
+              ) : (
+                <p className="text-xs font-bold mt-2" style={{ color: stage.pixelColor }}>👑 最終ステージ到達！</p>
+              )}
+            </div>
 
             <div className="mt-8 p-5 rounded-xl bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-50 border border-yellow-200 comment-fade">
               <div className="text-xs text-gray-500 mb-2">🐱 にゃんこからのメッセージ</div>
@@ -1483,21 +1520,28 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
         .filter(r => r.name === user.name)
         .sort((a, b) => a.month.localeCompare(b.month));
       const latest = myResponses[myResponses.length - 1];
-      const latestStage = latest ? getCatStage(latest.score) : CAT_STAGES[0];
-      const bestScore = myResponses.length ? Math.max(...myResponses.map(r => r.score)) : 0;
-      const bestStage = getCatStage(bestScore);
-      const avgScore = myResponses.length ? Math.round(myResponses.reduce((s,r) => s + r.score, 0) / myResponses.length) : 0;
+      const cumulativeXp = myResponses.reduce((sum, r) => sum + (r.score || 0), 0);
+      const currentStage = getCatStage(cumulativeXp);
+      const nextThreshold = getNextThreshold(cumulativeXp);
+      const barPct = nextThreshold
+        ? Math.min(100, Math.round((cumulativeXp - currentStage.minXp) / (nextThreshold.nextMinXp - currentStage.minXp) * 100))
+        : 100;
+      const bestMonthlyXp = myResponses.length ? Math.max(...myResponses.map(r => r.score)) : 0;
+      const avgMonthlyXp = myResponses.length ? Math.round(myResponses.reduce((s,r) => s + r.score, 0) / myResponses.length) : 0;
 
-      // スコア推移グラフ用
-      const trend = myResponses.map(r => ({
+      // 月次XP推移グラフ用
+      const trend = myResponses.map((r, idx) => ({
         month: r.month.slice(5),
-        score: r.score
+        xp: r.score,
+        cumulativeXp: myResponses.slice(0, idx + 1).reduce((s, x) => s + (x.score || 0), 0)
       }));
 
       // キャラ成長履歴（重複しないステージのみ）
       const stageHistory = [];
+      let runningXp = 0;
       myResponses.forEach(r => {
-        const st = getCatStage(r.score);
+        runningXp += (r.score || 0);
+        const st = getCatStage(runningXp);
         if (!stageHistory.some(h => h.id === st.id)) {
           stageHistory.push({ ...st, firstReachedAt: r.month });
         }
@@ -1513,54 +1557,74 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
             <button onClick={onLogout} className="text-sm text-gray-500 hover:text-gray-800">ログアウト</button>
           </div>
 
-          {/* 現在のキャラ + ベスト */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card title="🐱 いまの相棒にゃんこ">
-              <div className="text-center">
-                {latest ? (
-                  <>
-                    <div className="flex justify-center mb-2">
-                      <PixelCat stage={latestStage} size="lg" />
-                    </div>
-                    <div className="font-bold mt-2" style={{ color: latestStage.pixelColor }}>{latestStage.name}</div>
-                    <div className="text-xs text-gray-500 mt-1">最新スコア {latest.score}pt（{latest.month}）</div>
-                  </>
+          {/* 累積XPバー（メインビジュアル・次のキャラ名はネタバレ防止で非表示） */}
+          <Card title="🐱 いまの相棒にゃんこ">
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex-shrink-0">
+                {myResponses.length > 0 ? (
+                  <PixelCat stage={currentStage} size="lg" />
                 ) : (
-                  <p className="text-sm text-gray-400 py-8">まだ回答がないにゃ〜</p>
-                )}
-              </div>
-            </Card>
-
-            <Card title="🏆 ベストスコア">
-              <div className="text-center py-4">
-                <div className="text-5xl font-bold text-amber-500">{bestScore}</div>
-                <div className="text-xs text-gray-500 mt-1">/100pt</div>
-                {bestScore > 0 && (
-                  <div className="mt-3">
-                    <div className="text-xs font-medium" style={{ color: bestStage.pixelColor }}>到達ステージ：{bestStage.name}</div>
+                  <div className="w-48 h-48 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center">
+                    <span className="text-sm text-gray-400">まだ回答がないにゃ〜</span>
                   </div>
                 )}
               </div>
+              <div className="flex-1 w-full">
+                <div className="text-3xl font-bold" style={{ color: currentStage.pixelColor }}>{currentStage.name}</div>
+                <div className="text-sm text-gray-500 mt-1">{myResponses.length} 回の積み重ね</div>
+                <div className="mt-4">
+                  <div className="flex justify-between items-baseline mb-2">
+                    <span className="text-xs text-gray-500">累積XP</span>
+                    <span className="text-3xl font-bold" style={{ color: currentStage.pixelColor }}>
+                      {cumulativeXp}<span className="text-sm text-gray-400"> XP</span>
+                    </span>
+                  </div>
+                  <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-1000"
+                      style={{ width: `${barPct}%`, backgroundColor: currentStage.pixelColor }}
+                    />
+                  </div>
+                  {nextThreshold ? (
+                    <p className="text-xs text-gray-500 mt-2">
+                      次のキャラまであと <span className="font-bold" style={{ color: currentStage.pixelColor }}>{nextThreshold.needed} XP</span> 🎁
+                      <span className="text-gray-400"> ※ 次のキャラはおたのしみ</span>
+                    </p>
+                  ) : (
+                    <p className="text-xs font-bold mt-2" style={{ color: currentStage.pixelColor }}>👑 最終ステージ到達！</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* サブKPI */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card title="🏆 ベスト月次XP">
+              <div className="text-center py-2">
+                <div className="text-4xl font-bold text-amber-500">{bestMonthlyXp}</div>
+                <div className="text-xs text-gray-500 mt-1">/ 30 XP（1ヶ月の最高記録）</div>
+              </div>
             </Card>
 
-            <Card title="📊 平均スコア">
-              <div className="text-center py-4">
-                <div className="text-5xl font-bold text-indigo-500">{avgScore}</div>
-                <div className="text-xs text-gray-500 mt-1">過去{myResponses.length}回の平均</div>
+            <Card title="📊 平均月次XP">
+              <div className="text-center py-2">
+                <div className="text-4xl font-bold text-indigo-500">{avgMonthlyXp}</div>
+                <div className="text-xs text-gray-500 mt-1">/ 30 XP（過去{myResponses.length}回の平均）</div>
               </div>
             </Card>
           </div>
 
-          {/* スコア推移 */}
+          {/* 累積XP推移 */}
           {trend.length > 1 && (
-            <Card title="📈 あなたのスコア推移">
+            <Card title="📈 累積XPの伸び">
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={trend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
                   <XAxis dataKey="month" />
-                  <YAxis domain={[0,100]} />
+                  <YAxis />
                   <Tooltip />
-                  <Line type="monotone" dataKey="score" stroke="#a855f7" strokeWidth={3} dot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="cumulativeXp" name="累積XP" stroke="#a855f7" strokeWidth={3} dot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             </Card>
@@ -1578,7 +1642,7 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 text-center mt-3">いまの相棒は {latestStage.name}🎉</p>
+              <p className="text-xs text-gray-400 text-center mt-3">いまの相棒は {currentStage.name}🎉</p>
             </Card>
           )}
 
@@ -1588,30 +1652,29 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
               <p className="text-sm text-gray-400 text-center py-4">まだ回答がないにゃ〜</p>
             ) : (
               <div className="space-y-2">
-                {[...myResponses].reverse().map((r, i) => {
-                  const st = getCatStage(r.score);
-                  return (
-                    <details key={i} className="rounded-lg border bg-gray-50 hover:bg-white transition">
-                      <summary className="p-3 cursor-pointer flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-500">{r.month}</span>
-                          <span className="text-sm font-bold" style={{ color: st.pixelColor }}>{st.name}</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-bold text-indigo-600">{r.score}pt</span>
-                        </div>
-                      </summary>
-                      <div className="px-3 pb-3 text-xs space-y-1 border-t">
-                        <div><span className="text-gray-500">使用頻度：</span>{r.q1}</div>
-                        <div><span className="text-gray-500">効率化％：</span>{r.q3}%（約{(r.q3 * 1.6).toFixed(1)}h削減）</div>
-                        <div><span className="text-gray-500">成長実感：</span>{r.q4}</div>
-                        <div><span className="text-gray-500">来月の方向：</span>{r.q5}</div>
-                        {r.q7 && <div><span className="text-gray-500">ベスプラ：</span>{r.q7}</div>}
-                        {r.didable && <div><span className="text-gray-500">できたこと：</span>{r.didable}</div>}
+                {[...myResponses].reverse().map((r, i) => (
+                  <details key={i} className="rounded-lg border bg-gray-50 hover:bg-white transition">
+                    <summary className="p-3 cursor-pointer flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-gray-500">{r.month}</span>
                       </div>
-                    </details>
-                  );
-                })}
+                      <div className="text-right">
+                        <span className="font-bold text-indigo-600">+{r.score}<span className="text-xs ml-1">XP</span></span>
+                      </div>
+                    </summary>
+                    <div className="px-3 pb-3 text-xs space-y-1.5 border-t pt-2">
+                      <div><span className="text-gray-500">Q1 使用頻度：</span>{r.q1 || '-'}</div>
+                      <div><span className="text-gray-500">Q2 場面：</span>{(r.q2 || []).join('・') || '-'}</div>
+                      <div><span className="text-gray-500">Q3 効率化％：</span>{r.q3 || 0}%（約{((r.q3 || 0) * 1.6).toFixed(1)}h削減）</div>
+                      <div><span className="text-gray-500">Q4 成長実感：</span>{r.q4 || '-'}{r.q4Note && <span className="ml-1 text-gray-400">（{r.q4Note}）</span>}</div>
+                      <div><span className="text-gray-500">Q5 来月の方向：</span>{r.q5 || '-'}</div>
+                      <div><span className="text-gray-500">Q6 チーム共有：</span>{r.q6 || '-'}{r.q6Note && <span className="ml-1 text-gray-400">（{r.q6Note}）</span>}</div>
+                      {r.q7 && <div><span className="text-gray-500">Q7 ベスプラ：</span>{r.q7}</div>}
+                      {r.didable && <div><span className="text-gray-500">できたこと：</span>{r.didable}</div>}
+                      {r.comment && <div><span className="text-gray-500">コメント：</span>{r.comment}</div>}
+                    </div>
+                  </details>
+                ))}
               </div>
             )}
           </Card>
@@ -1784,7 +1847,7 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
           />
 
           {view === 'dashboard' && <PublicDashboard responses={responses} master={master} />}
-          {view === 'survey' && <Survey master={master} webhookUrl={webhookUrl} onComplete={() => setView('dashboard')} />}
+          {view === 'survey' && <Survey master={master} responses={responses} webhookUrl={webhookUrl} onComplete={() => setView('dashboard')} />}
           {view === 'mypage' && currentUser && (
             <MyPage
               user={currentUser}

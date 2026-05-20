@@ -1,23 +1,23 @@
 /**
  * AI Pulse Webhook (Google Apps Script)
- * KONNEKT INTERNATIONAL 社員のAI活用度をスプシで管理＋Claude APIでAIコメント生成
+ * KONNEKT INTERNATIONAL 社員のAI活用度をスプシで管理＋Gemini APIでAIコメント生成
  *
  * セットアップ手順は `00_🏢 company/ai/20260519_AI効果数値化/GAS構築手順_v1.md` を参照
  *
  * スクリプトプロパティ必須:
- *   - SHEET_ID            : スプレッドシートID
- *   - ANTHROPIC_API_KEY   : Claude APIキー（sk-ant-...）
- *   - ADMIN_PASSWORD      : 管理画面パスワード（既定: admin2026）
- *   - EXEC_PASSWORD       : 経営層パスワード（既定: exec2026）
- *   - MODEL               : Claudeモデル（既定: claude-haiku-4-5-20251001）
+ *   - SHEET_ID         : スプレッドシートID
+ *   - GEMINI_API_KEY   : Gemini APIキー（無料・https://aistudio.google.com/apikey で発行）
+ *   - ADMIN_PASSWORD   : 管理画面パスワード（既定: admin2026）
+ *   - EXEC_PASSWORD    : 経営層パスワード（既定: exec2026）
+ *   - MODEL            : Geminiモデル（既定: gemini-2.0-flash）
  */
 
 const PROPS = PropertiesService.getScriptProperties();
 const SHEET_ID = PROPS.getProperty('SHEET_ID');
-const ANTHROPIC_API_KEY = PROPS.getProperty('ANTHROPIC_API_KEY');
+const GEMINI_API_KEY = PROPS.getProperty('GEMINI_API_KEY');
 const ADMIN_PW = PROPS.getProperty('ADMIN_PASSWORD') || 'admin2026';
 const EXEC_PW = PROPS.getProperty('EXEC_PASSWORD') || 'exec2026';
-const MODEL = PROPS.getProperty('MODEL') || 'claude-haiku-4-5-20251001';
+const MODEL = PROPS.getProperty('MODEL') || 'gemini-2.0-flash';
 
 // ============ ルーティング ============
 function doGet(e) {
@@ -97,38 +97,37 @@ function submitResponse(data) {
 
   const score = data.score || calcScore(data);
   const row = [
-    new Date().toISOString(),     // タイムスタンプ
-    data.name || '',
-    data.department || '',
-    data.q1 || '',
-    JSON.stringify(data.q2 || []),
-    data.q3 || 0,
-    data.q4 || '',
-    data.q5 || '',
-    data.q6 || '',
-    data.q7 || '',
-    JSON.stringify(data.initiatives || []),
-    data.didable || '',
-    data.comment || '',
-    score
+    new Date().toISOString(),     // A タイムスタンプ
+    data.name || '',              // B 名前
+    data.department || '',        // C 部署
+    data.q1 || '',                // D Q1頻度
+    JSON.stringify(data.q2 || []),// E Q2場面JSON
+    data.q3 || 0,                 // F Q3効率化%
+    data.q4 || '',                // G Q4成長
+    data.q5 || '',                // H Q5目標
+    data.q6 || '',                // I Q6共有
+    data.q7 || '',                // J Q7BP
+    JSON.stringify(data.initiatives || []), // K 施策実施JSON
+    data.didable || '',           // L できたこと
+    data.comment || '',           // M コメント
+    score,                        // N スコア
+    data.q4Note || '',            // O Q4備考
+    data.q6Note || ''             // P Q6備考
   ];
   sheet.appendRow(row);
   return { ok: true, score };
 }
 
 function calcScore(ans) {
-  let s = 0;
-  const q1Map = { 'ほぼ毎日': 25, '週2-3日': 18, '週1日': 10, 'ほぼ使ってない': 3 };
-  s += q1Map[ans.q1] || 0;
-  s += Math.min(20, (ans.q2 || []).length * 5);
-  s += Math.min(20, Math.round((ans.q3 || 0) / 5)); // q3=% (0-100)
-  const q4Map = { '😫': 0, '😐': 5, '😊': 10, '🔥': 15 };
-  s += q4Map[ans.q4] || 0;
-  const q5Map = { '個人向上': 10, 'チーム巻き込み': 10, '新ツール開拓': 10, '現状維持': 3 };
-  s += q5Map[ans.q5] || 0;
-  const q6Map = { '😫': 0, '😐': 3, '😊': 7, '🔥': 10 };
-  s += q6Map[ans.q6] || 0;
-  return Math.max(0, Math.min(100, s));
+  // 月最大30XPの骨太モデル
+  let xp = 0;
+  xp += { 'ほぼ毎日': 10, '週2-3日': 5, '週1日': 2, 'ほぼ使ってない': 0 }[ans.q1] || 0;
+  xp += Math.min(6, (ans.q2 || []).length);
+  xp += Math.floor((ans.q3 || 0) / 14);
+  xp += { '😫': 0, '😐': 1, '😊': 2, '🔥': 3 }[ans.q4] || 0;
+  if (ans.q5) xp += (ans.q5 === '現状維持') ? 1 : 2;
+  xp += { '😫': 0, '😐': 1, '😊': 2, '🔥': 2 }[ans.q6] || 0;
+  return Math.max(0, Math.min(30, xp));
 }
 
 // ============ ダッシュボード取得 ============
@@ -166,36 +165,62 @@ function tryParseJSON(s) {
   try { return JSON.parse(s); } catch { return null; }
 }
 
-// ============ 猫キャラコメント生成（Claude API） ============
+// ============ 猫キャラコメント生成（Gemini API） ============
 function generateCatComment(data) {
-  const { name, score, currentMonth } = data;
-  if (!ANTHROPIC_API_KEY) return { comment: '今月もおつかれにゃ！' };
+  const { name, score, cumulativeXp, currentMonth, currentAnswers } = data;
+  if (!GEMINI_API_KEY) return { comment: '今月もおつかれにゃ！' };
 
-  // 当人の前月データを取得
+  // 当人の今月以前のデータを全部取得（昇順）
   const dashboard = getDashboard();
-  const myHist = dashboard.responses.filter(r => r.name === name).sort((a, b) => a.month.localeCompare(b.month));
-  const lastEntry = myHist.length >= 2 ? myHist[myHist.length - 2] : null;
-  const diff = lastEntry ? score - lastEntry.score : 0;
+  const myHist = dashboard.responses
+    .filter(r => r.name === name)
+    .sort((a, b) => a.month.localeCompare(b.month));
 
-  const prompt = `あなたは社員のAI活用を応援する猫キャラ「にゃんこ」です。${name}さんの今月のAI活用結果を見て、振り返り＋来月のアドバイスを2-3行で返してください。
+  // 最新の保存済みエントリ（既に今月分が保存されてる場合はそれの1個前、まだなら最新を「先月」とみなす）
+  const lastEntry = myHist.length > 0
+    ? (myHist[myHist.length - 1].month === currentMonth
+        ? (myHist.length >= 2 ? myHist[myHist.length - 2] : null)
+        : myHist[myHist.length - 1])
+    : null;
 
-【今月のスコア】${score}/100pt
-${lastEntry ? `【先月のスコア】${lastEntry.score}/100pt（差分 ${diff > 0 ? '+' : ''}${diff}pt）` : '【先月】データなし（今月が初回）'}
-【最新の回答】使用頻度=${data.q1 || '不明'} / 節約時間=${data.q3 || 0}h / 成長実感=${data.q4 || '不明'}
+  const cur = currentAnswers || {};
+  const summarize = (r) => {
+    if (!r) return '(なし)';
+    return [
+      `使用頻度=${r.q1 || '-'}`,
+      `場面=${(r.q2 || []).join('・') || '-'}`,
+      `効率化=${r.q3 || 0}%`,
+      `成長実感=${r.q4 || '-'}${r.q4Note ? `(${r.q4Note})` : ''}`,
+      `来月の方向=${r.q5 || '-'}`,
+      `共有=${r.q6 || '-'}${r.q6Note ? `(${r.q6Note})` : ''}`,
+      `ベスプラ=${r.q7 || 'なし'}`,
+      `できたこと=${r.didable || 'なし'}`
+    ].join(' / ');
+  };
+
+  const prompt = `あなたは社員のAI活用を応援する猫キャラ「にゃんこ」です。
+${name}さんの「先月→今月」の変化を見て、振り返り＋来月のアドバイスを3-4行で返してください。
+
+【今月（${currentMonth}）】月次+${score}XP / 累積${cumulativeXp}XP
+${summarize(cur)}
+
+【先月】
+${lastEntry ? `(${lastEntry.month}) ${summarize(lastEntry)}` : '初回の回答なのでデータなし'}
 
 ルール:
-- 語尾に「にゃ」をつける
-- 前月比に触れる（伸びてれば褒める・下がってれば優しく後押し）
-- 来月の具体的アクションを1つだけ提案
-- 2-3行・絵文字1-2個OK・改行入れて読みやすく`;
+- 語尾は「にゃ」
+- 先月データがあれば、必ず具体的な変化に触れる（例:「先月は週1だったのが今月はほぼ毎日になってるにゃ！」「先月の効率化15%から、今月は40%に上がったにゃ✨」「先月『議事録』だけだったのが、今月は『企画書』にも広がってるにゃ」）
+- 来月の具体行動を1つ提案
+- 3-4行・絵文字1〜2個OK・読みやすく改行
+- 励まし口調・厳しすぎないで`;
 
-  const comment = callClaude(prompt, 300);
+  const comment = callGemini(prompt, 500);
   return { comment };
 }
 
 // ============ 経営層分析生成（Claude API） ============
 function generateExecAnalysis(data) {
-  if (!ANTHROPIC_API_KEY) return { analysis: '（APIキー未設定）' };
+  if (!GEMINI_API_KEY) return { analysis: '（APIキー未設定）' };
   const { totalSaved, lastSaved, heavyRate, respRate, deptStats, initStats } = data;
 
   const prompt = `あなたはAI経営アナリストです。KONNEKT INTERNATIONAL の今月のAI活用データを見て、経営層向けに前月比の変化点を3-5個、定量的に指摘してください。
@@ -213,31 +238,32 @@ function generateExecAnalysis(data) {
 - 3-5個の箇条書き
 - 最後に1行で「経営への提言」`;
 
-  const analysis = callClaude(prompt, 1500);
+  const analysis = callGemini(prompt, 1500);
   return { analysis };
 }
 
-// ============ Claude API 呼び出し ============
-function callClaude(prompt, maxTokens) {
-  const url = 'https://api.anthropic.com/v1/messages';
+// ============ Gemini API 呼び出し ============
+function callGemini(prompt, maxTokens) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
   const payload = {
-    model: MODEL,
-    max_tokens: maxTokens || 500,
-    messages: [{ role: 'user', content: prompt }]
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      maxOutputTokens: maxTokens || 500,
+      temperature: 0.7
+    }
   };
   const res = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
-    headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01'
-    },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   });
   const body = JSON.parse(res.getContentText());
   if (body.error) throw new Error(body.error.message || JSON.stringify(body.error));
-  return body.content[0].text;
+  if (!body.candidates || !body.candidates[0]) {
+    throw new Error('Geminiレスポンスが空です: ' + JSON.stringify(body));
+  }
+  return body.candidates[0].content.parts[0].text;
 }
 
 // ============ 月次ダイジェスト生成 ============
