@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>AI Pulse — KONNEKT INTERNATIONAL</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+  <style>
+    body { font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; background: #fafafa; }
+    .pixel-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 1px; }
+    .pixel-cell { aspect-ratio: 1/1; }
+    .confetti {
+      position: fixed; width: 10px; height: 10px; pointer-events: none;
+      animation: fall 3s linear forwards; z-index: 100;
+    }
+    @keyframes fall {
+      to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    .slide-in { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .typing::after { content: '...'; animation: typing 1.5s infinite; }
+    @keyframes typing { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
+    /* スマホでナビが折れないように */
+    @media (max-width: 640px) {
+      .main-nav { flex-direction: row; gap: 0.5rem; }
+      .main-nav button { font-size: 0.75rem; padding: 0.5rem 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useMemo, useRef } = React;
+    const {
+      LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+      XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+      RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
+    } = Recharts;
+
+    // ============ 6段階猫キャラ定義 ============
+    const CAT_STAGES = [
+      {
+        id: 'egg', name: 'たまご', minScore: 0, maxScore: 19,
+        pixelColor: '#f5e6d3', bgColor: '#fff8ec', borderColor: '#e6c896',
+        message: 'まずは最初の一歩からにゃ。今月は使ってみるだけでもOKだにゃ〜',
+        pixels: [
+          '00111100',
+          '01111110',
+          '11111111',
+          '11111111',
+          '11111111',
+          '11111111',
+          '01111110',
+          '00111100',
+        ]
+      },
+      {
+        id: 'cracked', name: 'ひびわれたまご', minScore: 20, maxScore: 39,
+        pixelColor: '#f5d6a3', bgColor: '#fff3dc', borderColor: '#e6b576',
+        message: '殻にヒビが入ってきたにゃ！もうすぐ生まれる予感…にゃ',
+        pixels: [
+          '00111100',
+          '01111110',
+          '11011011',
+          '11111111',
+          '11011111',
+          '11111011',
+          '01111110',
+          '00111100',
+        ]
+      },
+      {
+        id: 'kitten', name: '子にゃんこ', minScore: 40, maxScore: 54,
+        pixelColor: '#d4a373', bgColor: '#faedcd', borderColor: '#c08552',
+        message: '生まれたにゃ〜！少しずつAIに慣れてきたね、その調子にゃ',
+        pixels: [
+          '01000010',
+          '01100110',
+          '01111110',
+          '10100101',
+          '11111111',
+          '01111110',
+          '00111100',
+          '00100100',
+        ]
+      },
+      {
+        id: 'cat', name: 'にゃんこ', minScore: 55, maxScore: 69,
+        pixelColor: '#9c6644', bgColor: '#ede0d4', borderColor: '#7f5539',
+        message: 'AIが日常に溶け込んできたにゃ！この調子で続けようにゃ〜',
+        pixels: [
+          '01000010',
+          '01100110',
+          '01111110',
+          '10100101',
+          '11111111',
+          '01111110',
+          '00111110',
+          '00111110',
+        ]
+      },
+      {
+        id: 'ai_cat', name: 'AIにゃんこ', minScore: 70, maxScore: 84,
+        pixelColor: '#5a4a8a', bgColor: '#e8e4f3', borderColor: '#3d3168',
+        message: 'AI使いこなしてるにゃ！眼鏡もキマッてるにゃ〜✨',
+        pixels: [
+          '01000010',
+          '01100110',
+          '11011011',
+          '10100101',
+          '11111111',
+          '01111110',
+          '00111110',
+          '00111110',
+        ]
+      },
+      {
+        id: 'master', name: 'AIマスターにゃん', minScore: 85, maxScore: 100,
+        pixelColor: '#d4a017', bgColor: '#fff4cc', borderColor: '#b8860b',
+        message: 'もう完全にAIマスターにゃ！👑 みんなのお手本だにゃ〜',
+        pixels: [
+          '10100101',
+          '11111111',
+          '01100110',
+          '11011011',
+          '10100101',
+          '11111111',
+          '01111110',
+          '00111110',
+        ]
+      },
+    ];
+
+    const getCatStage = (score) => {
+      return CAT_STAGES.find(s => score >= s.minScore && score <= s.maxScore) || CAT_STAGES[0];
+    };
+
+    // ============ ピクセルアート描画 ============
+    const PixelCat = ({ stage, size = 'md', highlight = false }) => {
+      const sizes = { sm: 'w-16 h-16', md: 'w-32 h-32', lg: 'w-48 h-48' };
+      return (
+        <div
+          className={`${sizes[size]} p-2 rounded-2xl border-2 ${highlight ? 'ring-4 ring-yellow-300' : ''}`}
+          style={{ backgroundColor: stage.bgColor, borderColor: stage.borderColor }}
+        >
+          <div className="pixel-grid w-full h-full">
+            {stage.pixels.flatMap((row, ri) =>
+              row.split('').map((cell, ci) => (
+                <div
+                  key={`${ri}-${ci}`}
+                  className="pixel-cell"
+                  style={{ backgroundColor: cell === '1' ? stage.pixelColor : 'transparent' }}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ サンプルデータ（GAS未設定時のフォールバック） ============
+    const SAMPLE_MASTER = {
+      names: [
+        { name: '由羽 弘明', department: '経営・営業', email: '', active: true },
+        { name: '小柳 雅裕', department: '経営・営業', email: '', active: true },
+        { name: '福島 優美', department: 'IPMD・トレンドリサーチ', email: '', active: true },
+        { name: '引地 瑞生', department: 'IPMD・トレンドリサーチ', email: '', active: true },
+        { name: '齊藤 マミ', department: 'IPMD・トレンドリサーチ', email: '', active: true },
+        { name: '川田 嘉悠', department: 'ブランドPM・企画・EC', email: '', active: true },
+        { name: '小林 準基', department: 'ブランドPM・企画・EC', email: '', active: true },
+        { name: '菊田 舞', department: 'ブランドPM・企画・EC', email: '', active: true },
+        { name: '北園 佳樹', department: 'ブランドPM・企画・EC', email: '', active: true },
+        { name: '山﨑 丈嗣', department: '経営・営業', email: '', active: true },
+        { name: '藤本 有璃子', department: 'クリエイティブ・デザイン', email: '', active: true },
+        { name: '高垣 ひなた', department: 'クリエイティブ・デザイン', email: '', active: true },
+        { name: '植田 尋', department: 'クリエイティブ・デザイン', email: '', active: true },
+        { name: '青木 和輝', department: '生産・物流・バックオフィス', email: '', active: true },
+        { name: '井道 桃香', department: '生産・物流・バックオフィス', email: '', active: true },
+        { name: '佐生 竜輔', department: '生産・物流・バックオフィス', email: '', active: true },
+        { name: '鈴木 由洋', department: '経営・営業', email: '', active: true },
+        { name: '秋本 壮', department: '経営・営業', email: '', active: true },
+      ],
+      departments: ['経営・営業','IPMD・トレンドリサーチ','ブランドPM・企画・EC','クリエイティブ・デザイン','生産・物流・バックオフィス'],
+      initiatives: [
+        { id: 'I001', name: 'Claude × Shopify連携設定', month: '2026-05', detail: 'Shopifyコネクタを社員アカウントで接続', active: true },
+        { id: 'I002', name: 'Claude議事録自動化（CircleBack）', month: '2026-05', detail: 'Google Meet→自動議事録', active: true },
+        { id: 'I003', name: 'プロンプト集50選 読了', month: '2026-05', detail: '社内ナレッジページを通読', active: true },
+      ],
+      settings: { '人件費単価_時給': 5000, 'AI月額コスト': 50000 }
+    };
+
+    // ============ サンプル回答データ ============
+    const SAMPLE_RESPONSES = (() => {
+      const out = [];
+      const months = ['2025-12','2026-01','2026-02','2026-03','2026-04','2026-05'];
+      SAMPLE_MASTER.names.forEach((p, i) => {
+        months.forEach((m, mi) => {
+          if (Math.random() < 0.85) {
+            const base = 30 + (mi * 5) + (i % 6) * 8 + Math.floor(Math.random() * 15);
+            out.push({
+              timestamp: `${m}-15T10:00:00`,
+              month: m,
+              name: p.name,
+              department: p.department,
+              q1: ['ほぼ毎日','週2-3日','週1日','ほぼ使ってない'][Math.floor(Math.random()*4)],
+              q2: ['メール作成','議事録','リサーチ','企画書'],
+              q3: Math.floor(Math.random()*10) + 1,
+              q4: ['😫','😐','😊','🔥'][Math.floor(Math.random()*4)],
+              q5: ['プロンプト改善','新ツール試す','チーム共有','現状維持'][Math.floor(Math.random()*4)],
+              q6: ['😫','😐','😊','🔥'][Math.floor(Math.random()*4)],
+              q7: i % 3 === 0 ? '議事録自動化でMTG時間が30分→10分になった' : '',
+              initiatives: ['I001','I002'],
+              didable: '提案資料の初稿をAIに任せられるようになった',
+              comment: '',
+              score: Math.min(100, Math.max(0, base))
+            });
+          }
+        });
+      });
+      return out;
+    })();
+
+    // ============ ストレージ ============
+    const STORAGE_KEY = 'ai-pulse-config';
+    const loadConfig = () => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; }
+    };
+    const saveConfig = (cfg) => localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+
+    // ============ GAS API ============
+    const callGas = async (webhookUrl, action, payload = null) => {
+      if (!webhookUrl) throw new Error('Webhook URL未設定');
+      const url = payload ? webhookUrl : `${webhookUrl}?action=${action}`;
+      const opts = payload
+        ? { method: 'POST', body: JSON.stringify({ action, ...payload }), headers: {'Content-Type': 'text/plain;charset=utf-8'} }
+        : { method: 'GET' };
+      const res = await fetch(url, opts);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    };
+
+    // ============ スコア計算 ============
+    const calcScore = (ans) => {
+      let score = 0;
+      // Q1
+      score += { 'ほぼ毎日': 25, '週2-3日': 18, '週1日': 10, 'ほぼ使ってない': 3 }[ans.q1] || 0;
+      // Q2 (複数選択・上限20)
+      score += Math.min(20, (ans.q2 || []).length * 5);
+      // Q3 (時間スライダー)
+      score += Math.min(20, Math.round((ans.q3 || 0) * 2));
+      // Q4
+      score += { '😫': 0, '😐': 5, '😊': 10, '🔥': 15 }[ans.q4] || 0;
+      // Q5
+      score += { 'プロンプト改善': 10, '新ツール試す': 8, 'チーム共有': 10, '現状維持': 3 }[ans.q5] || 0;
+      // Q6
+      score += { '😫': 0, '😐': 3, '😊': 7, '🔥': 10 }[ans.q6] || 0;
+      return Math.min(100, Math.max(0, score));
+    };
+
+    // ============ 紙吹雪 ============
+    const fireConfetti = () => {
+      const colors = ['#FFD700','#FF6B6B','#4ECDC4','#95E1D3','#F38181','#AA96DA'];
+      for (let i = 0; i < 60; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        el.style.left = Math.random() * 100 + 'vw';
+        el.style.top = '-10px';
+        el.style.background = colors[Math.floor(Math.random() * colors.length)];
+        el.style.animationDelay = Math.random() * 0.5 + 's';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+      }
+    };
+
+    // ============ Header（ナビ） ============
+    const Header = ({ currentView, setView, onAdmin, onExec }) => (
+      <header className="bg-white border-b sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🐱</span>
+            <h1 className="font-bold text-lg">AI Pulse</h1>
+            <span className="text-xs text-gray-500 hidden sm:inline">KONNEKT INTERNATIONAL</span>
+          </div>
+          <nav className="main-nav flex items-center gap-2">
+            <button
+              onClick={() => setView('dashboard')}
+              className={`px-3 py-2 rounded-lg text-sm transition ${currentView === 'dashboard' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+            >📊 ダッシュボード</button>
+            <button
+              onClick={() => setView('survey')}
+              className={`px-3 py-2 rounded-lg text-sm transition ${currentView === 'survey' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+            >✏️ チェックイン</button>
+            <button
+              onClick={onAdmin}
+              className="ml-2 p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              title="管理画面"
+            >🛠</button>
+            <button
+              onClick={onExec}
+              className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              title="経営層"
+            >🔒</button>
+          </nav>
+        </div>
+      </header>
+    );
+
+    // ============ 全社ダッシュボード（公開） ============
+    const PublicDashboard = ({ responses, master }) => {
+      const currentMonth = new Date().toISOString().slice(0,7);
+      const thisMonth = responses.filter(r => r.month === currentMonth || r.month === '2026-05');
+      const allMonths = [...new Set(responses.map(r => r.month))].sort();
+      const last6 = allMonths.slice(-6);
+
+      const avgScore = thisMonth.length ? Math.round(thisMonth.reduce((s,r) => s + r.score, 0) / thisMonth.length) : 0;
+      const respCount = thisMonth.length;
+      const totalCount = master.names.filter(n => n.active).length;
+      const respRate = totalCount ? Math.round(respCount / totalCount * 100) : 0;
+
+      // 部署別
+      const deptScores = master.departments.map(d => {
+        const m = thisMonth.filter(r => r.department === d);
+        return {
+          dept: d.slice(0, 8),
+          score: m.length ? Math.round(m.reduce((s,r) => s + r.score, 0) / m.length) : 0,
+          count: m.length
+        };
+      }).sort((a,b) => b.score - a.score);
+
+      // 月次推移
+      const monthly = last6.map(m => {
+        const ms = responses.filter(r => r.month === m);
+        return {
+          month: m.slice(5),
+          score: ms.length ? Math.round(ms.reduce((s,r) => s + r.score, 0) / ms.length) : 0,
+          count: ms.length
+        };
+      });
+
+      // レベル分布
+      const levelDist = CAT_STAGES.map(s => ({
+        name: s.name,
+        count: thisMonth.filter(r => r.score >= s.minScore && r.score <= s.maxScore).length,
+        color: s.pixelColor
+      }));
+
+      // ヘビーユーザー率（毎日使用）
+      const heavyCount = thisMonth.filter(r => r.q1 === 'ほぼ毎日').length;
+      const heavyRate = thisMonth.length ? Math.round(heavyCount / thisMonth.length * 100) : 0;
+
+      // ベストプラクティス
+      const bestPractices = thisMonth.filter(r => r.q7 && r.q7.length > 5).slice(0, 5);
+
+      return (
+        <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <KPI label="全社平均スコア" value={avgScore} unit="pt" color="indigo" />
+            <KPI label="今月の回答" value={`${respCount}/${totalCount}`} unit={`回答率${respRate}%`} color="emerald" />
+            <KPI label="トップ部署" value={deptScores[0]?.dept || '-'} unit={`${deptScores[0]?.score || 0}pt`} color="amber" />
+            <KPI label="ヘビーユーザー率" value={`${heavyRate}%`} unit="毎日活用" color="rose" />
+          </div>
+
+          <Card title="📈 月次推移">
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={monthly}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                <XAxis dataKey="month" />
+                <YAxis domain={[0,100]} />
+                <Tooltip />
+                <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={3} dot={{ r: 5 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card title="🏆 部署別ランキング">
+              <div className="space-y-3">
+                {deptScores.map((d, i) => (
+                  <div key={d.dept} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{['🥇','🥈','🥉','4','5'][i] || (i+1)}</span>
+                      <span className="font-medium text-sm">{d.dept}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-indigo-600">{d.score}pt</div>
+                      <div className="text-xs text-gray-500">{d.count}人</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card title="🐱 レベル分布">
+              <div className="space-y-2">
+                {levelDist.map(l => (
+                  <div key={l.name} className="flex items-center gap-3">
+                    <span className="text-sm w-32">{l.name}</span>
+                    <div className="flex-1 bg-gray-100 h-6 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.max(5, l.count / Math.max(1, totalCount) * 100)}%`,
+                          backgroundColor: l.color
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium w-8 text-right">{l.count}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          <Card title="💡 今月のベストプラクティス">
+            {bestPractices.length === 0 ? (
+              <p className="text-gray-400 text-sm">まだベストプラクティスの投稿はありません。</p>
+            ) : (
+              <div className="space-y-3">
+                {bestPractices.map((p, i) => (
+                  <div key={i} className="p-3 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200">
+                    <p className="text-sm">{p.q7}</p>
+                    <p className="text-xs text-gray-500 mt-1">— {p.department}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      );
+    };
+
+    const KPI = ({ label, value, unit, color }) => {
+      const colors = {
+        indigo: 'from-indigo-500 to-purple-500',
+        emerald: 'from-emerald-500 to-teal-500',
+        amber: 'from-amber-500 to-orange-500',
+        rose: 'from-rose-500 to-pink-500',
+      };
+      return (
+        <div className={`bg-gradient-to-br ${colors[color]} text-white p-4 rounded-xl shadow-sm`}>
+          <div className="text-xs opacity-80">{label}</div>
+          <div className="text-2xl md:text-3xl font-bold mt-1">{value}</div>
+          <div className="text-xs opacity-80 mt-1">{unit}</div>
+        </div>
+      );
+    };
+
+    const Card = ({ title, children }) => (
+      <div className="bg-white rounded-xl border p-5 shadow-sm">
+        <h3 className="font-bold text-sm text-gray-700 mb-4">{title}</h3>
+        {children}
+      </div>
+    );
+
+    // ============ チェックイン（アンケート） ============
+    const Survey = ({ master, webhookUrl, onComplete }) => {
+      const [step, setStep] = useState(0);
+      const [answers, setAnswers] = useState({
+        name: '', q1: '', q2: [], q3: 0, q4: '', q5: '', q6: '', q7: '',
+        initiatives: [], didable: '', comment: ''
+      });
+      const [submitting, setSubmitting] = useState(false);
+      const [result, setResult] = useState(null);
+      const [aiComment, setAiComment] = useState('');
+      const [aiLoading, setAiLoading] = useState(false);
+
+      const totalSteps = 11;
+      const progress = (step / totalSteps) * 100;
+
+      const update = (field, value) => setAnswers(a => ({ ...a, [field]: value }));
+
+      const goNext = () => setStep(s => Math.min(totalSteps, s + 1));
+      const goBack = () => setStep(s => Math.max(0, s - 1));
+
+      const submit = async () => {
+        setSubmitting(true);
+        const score = calcScore(answers);
+        const stage = getCatStage(score);
+        const person = master.names.find(n => n.name === answers.name);
+        const payload = {
+          ...answers,
+          department: person?.department || '不明',
+          score,
+          timestamp: new Date().toISOString(),
+          month: new Date().toISOString().slice(0,7)
+        };
+
+        // GAS送信（失敗してもUIは進める）
+        if (webhookUrl) {
+          try {
+            await callGas(webhookUrl, 'submit_response', payload);
+          } catch (e) {
+            console.warn('送信失敗（ローカルだけ保存）:', e);
+          }
+        }
+
+        setResult({ score, stage, payload });
+        fireConfetti();
+        setSubmitting(false);
+
+        // AIコメント生成
+        if (webhookUrl) {
+          setAiLoading(true);
+          try {
+            const res = await callGas(webhookUrl, 'generate_cat_comment', { name: answers.name, score, currentMonth: payload.month });
+            setAiComment(res.comment || stage.message);
+          } catch {
+            setAiComment(stage.message);
+          } finally {
+            setAiLoading(false);
+          }
+        } else {
+          setAiComment(stage.message);
+        }
+      };
+
+      if (result) {
+        return <SurveyResult result={result} aiComment={aiComment} aiLoading={aiLoading} onComplete={onComplete} />;
+      }
+
+      return (
+        <div className="max-w-2xl mx-auto px-4 py-6">
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs text-gray-500">Step {step + 1} / {totalSteps + 1}</span>
+              <span className="text-xs text-gray-500">あと {totalSteps - step} 問で猫キャラがわかるにゃ</span>
+            </div>
+            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border p-6 shadow-sm slide-in" key={step}>
+            {step === 0 && <NameStep answers={answers} master={master} update={update} onNext={goNext} />}
+            {step === 1 && <Q1Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 2 && <Q2Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 3 && <Q3Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 4 && <Q4Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 5 && <Q5Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 6 && <Q6Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 7 && <Q7Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 8 && <InitiativesStep answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 9 && <DidableStep answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 10 && <CommentStep answers={answers} update={update} onSubmit={submit} onBack={goBack} submitting={submitting} />}
+          </div>
+        </div>
+      );
+    };
+
+    const NameStep = ({ answers, master, update, onNext }) => (
+      <div>
+        <h2 className="text-xl font-bold mb-1">こんにちは🐱</h2>
+        <p className="text-sm text-gray-500 mb-6">まずあなたの名前を選んでください</p>
+        <select
+          value={answers.name}
+          onChange={e => update('name', e.target.value)}
+          className="w-full p-3 border rounded-lg text-base"
+        >
+          <option value="">— 名前を選択 —</option>
+          {master.names.filter(n => n.active).map(n => (
+            <option key={n.name} value={n.name}>{n.name}（{n.department}）</option>
+          ))}
+        </select>
+        <button
+          onClick={onNext}
+          disabled={!answers.name}
+          className="mt-6 w-full py-3 rounded-lg bg-gray-900 text-white font-medium disabled:bg-gray-300"
+        >はじめる 🚀</button>
+      </div>
+    );
+
+    const cardChoice = (val, current, onClick, emoji, label) => (
+      <button
+        onClick={() => onClick(val)}
+        className={`p-4 rounded-xl border-2 transition text-left ${current === val ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-400'}`}
+      >
+        <div className="text-3xl mb-2">{emoji}</div>
+        <div className="text-sm font-medium">{label}</div>
+      </button>
+    );
+
+    const Q1Step = ({ answers, update, onNext, onBack }) => {
+      const choose = v => { update('q1', v); setTimeout(onNext, 200); };
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-1">Q1. 今月のAI使用頻度は？</h2>
+          <p className="text-sm text-gray-500 mb-6">Claude / ChatGPT / Cowork などをどれくらい使った？</p>
+          <div className="grid grid-cols-2 gap-3">
+            {cardChoice('ほぼ毎日', answers.q1, choose, '🔥', 'ほぼ毎日')}
+            {cardChoice('週2-3日', answers.q1, choose, '⚡', '週2〜3日')}
+            {cardChoice('週1日', answers.q1, choose, '🌱', '週1日くらい')}
+            {cardChoice('ほぼ使ってない', answers.q1, choose, '😴', 'ほぼ使ってない')}
+          </div>
+          <button onClick={onBack} className="mt-6 text-sm text-gray-500">← 戻る</button>
+        </div>
+      );
+    };
+
+    const Q2Step = ({ answers, update, onNext, onBack }) => {
+      const opts = [
+        { v: 'メール作成', e: '✉️' },
+        { v: '議事録', e: '📝' },
+        { v: 'リサーチ', e: '🔍' },
+        { v: '企画書', e: '📋' },
+        { v: 'デザイン制作', e: '🎨' },
+        { v: 'コピー作成', e: '✍️' },
+        { v: 'データ集計', e: '📊' },
+        { v: '書類処理', e: '📄' },
+      ];
+      const toggle = v => {
+        const cur = answers.q2 || [];
+        const next = cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v];
+        update('q2', next);
+      };
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-1">Q2. 今月AIで効率化した場面は？</h2>
+          <p className="text-sm text-gray-500 mb-6">複数選択OK（最大4つ）</p>
+          <div className="grid grid-cols-2 gap-3">
+            {opts.map(o => (
+              <button
+                key={o.v}
+                onClick={() => toggle(o.v)}
+                disabled={(answers.q2 || []).length >= 4 && !(answers.q2 || []).includes(o.v)}
+                className={`p-3 rounded-xl border-2 transition text-left ${(answers.q2 || []).includes(o.v) ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-400 disabled:opacity-30'}`}
+              >
+                <div className="text-2xl mb-1">{o.e}</div>
+                <div className="text-sm">{o.v}</div>
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-between mt-6">
+            <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+            <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
+          </div>
+        </div>
+      );
+    };
+
+    const Q3Step = ({ answers, update, onNext, onBack }) => (
+      <div>
+        <h2 className="text-xl font-bold mb-1">Q3. 今月、AIで節約できた時間は？</h2>
+        <p className="text-sm text-gray-500 mb-6">体感でOK・スライダーで設定してね</p>
+        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-2xl mb-4">
+          <div className="text-center mb-4">
+            <div className="text-5xl font-bold text-indigo-600">{answers.q3}</div>
+            <div className="text-sm text-gray-500">時間 / 月</div>
+          </div>
+          <input
+            type="range"
+            min="0" max="10" step="0.5"
+            value={answers.q3}
+            onChange={e => update('q3', parseFloat(e.target.value))}
+            className="w-full"
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-2">
+            <span>0h</span><span>5h</span><span>10h+</span>
+          </div>
+        </div>
+        <p className="text-sm text-center text-gray-600 mb-4">
+          {answers.q3 === 0 && 'まだ実感なし、来月チャレンジしてみよう🌱'}
+          {answers.q3 > 0 && answers.q3 <= 2 && '少しずつ効率化できてるね！'}
+          {answers.q3 > 2 && answers.q3 <= 5 && 'いい感じに使えてる👏'}
+          {answers.q3 > 5 && 'すごい！もう余裕でAI使いこなしてる🔥'}
+        </p>
+        <div className="flex justify-between">
+          <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+          <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
+        </div>
+      </div>
+    );
+
+    const Q4Step = ({ answers, update, onNext, onBack }) => {
+      const choose = v => { update('q4', v); setTimeout(onNext, 200); };
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-1">Q4. 先月より自分はAI使えてる感じある？</h2>
+          <p className="text-sm text-gray-500 mb-6">直感でリアクション！</p>
+          <div className="grid grid-cols-4 gap-3">
+            {['😫','😐','😊','🔥'].map(e => (
+              <button
+                key={e}
+                onClick={() => choose(e)}
+                className={`p-6 rounded-2xl border-2 text-5xl transition ${answers.q4 === e ? 'border-indigo-500 bg-indigo-50 scale-110' : 'border-gray-200 hover:border-gray-400'}`}
+              >{e}</button>
+            ))}
+          </div>
+          <p className="text-center text-xs text-gray-500 mt-4">後退 ← → 急成長</p>
+          <button onClick={onBack} className="mt-6 text-sm text-gray-500">← 戻る</button>
+        </div>
+      );
+    };
+
+    const Q5Step = ({ answers, update, onNext, onBack }) => {
+      const choose = v => { update('q5', v); setTimeout(onNext, 200); };
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-1">Q5. 来月チャレンジしたいことは？</h2>
+          <p className="text-sm text-gray-500 mb-6">一つだけ選んで</p>
+          <div className="grid grid-cols-2 gap-3">
+            {cardChoice('プロンプト改善', answers.q5, choose, '✨', 'プロンプト改善')}
+            {cardChoice('新ツール試す', answers.q5, choose, '🆕', '新ツール試す')}
+            {cardChoice('チーム共有', answers.q5, choose, '🤝', 'チームに共有')}
+            {cardChoice('現状維持', answers.q5, choose, '🌿', '現状維持でいい')}
+          </div>
+          <button onClick={onBack} className="mt-6 text-sm text-gray-500">← 戻る</button>
+        </div>
+      );
+    };
+
+    const Q6Step = ({ answers, update, onNext, onBack }) => {
+      const choose = v => { update('q6', v); setTimeout(onNext, 200); };
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-1">Q6. チームにAI活用を共有してる？</h2>
+          <p className="text-sm text-gray-500 mb-6">直感でリアクション！</p>
+          <div className="grid grid-cols-4 gap-3">
+            {['😫','😐','😊','🔥'].map(e => (
+              <button
+                key={e}
+                onClick={() => choose(e)}
+                className={`p-6 rounded-2xl border-2 text-5xl transition ${answers.q6 === e ? 'border-indigo-500 bg-indigo-50 scale-110' : 'border-gray-200 hover:border-gray-400'}`}
+              >{e}</button>
+            ))}
+          </div>
+          <p className="text-center text-xs text-gray-500 mt-4">独占中 ← → みんなに共有</p>
+          <button onClick={onBack} className="mt-6 text-sm text-gray-500">← 戻る</button>
+        </div>
+      );
+    };
+
+    const Q7Step = ({ answers, update, onNext, onBack }) => (
+      <div>
+        <h2 className="text-xl font-bold mb-1">Q7. 今月のベストプラクティス💡</h2>
+        <p className="text-sm text-gray-500 mb-6">「これは効いた！」って活用法があれば（任意）</p>
+        <textarea
+          value={answers.q7}
+          onChange={e => update('q7', e.target.value)}
+          rows={4}
+          placeholder="例：議事録自動化でMTG時間が30分→10分になった"
+          className="w-full p-3 border rounded-lg text-base"
+        />
+        <div className="flex justify-between mt-6">
+          <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+          <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">スキップ・次へ →</button>
+        </div>
+      </div>
+    );
+
+    const InitiativesStep = ({ answers, master, update, onNext, onBack }) => {
+      const toggle = id => {
+        const cur = answers.initiatives || [];
+        const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
+        update('initiatives', next);
+      };
+      const active = master.initiatives.filter(i => i.active);
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-1">📌 今月の施策、実施した？</h2>
+          <p className="text-sm text-gray-500 mb-6">AI推進チームから案内された設定・取り組み</p>
+          {active.length === 0 ? (
+            <p className="text-gray-400 text-sm mb-4">今月の施策はまだ登録されていません。</p>
+          ) : (
+            <div className="space-y-2">
+              {active.map(i => (
+                <label key={i.id} className="flex items-start gap-3 p-3 rounded-lg border-2 border-gray-200 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={(answers.initiatives || []).includes(i.id)}
+                    onChange={() => toggle(i.id)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <div className="font-medium text-sm">{i.name}</div>
+                    {i.detail && <div className="text-xs text-gray-500 mt-1">{i.detail}</div>}
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-between mt-6">
+            <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+            <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
+          </div>
+        </div>
+      );
+    };
+
+    const DidableStep = ({ answers, update, onNext, onBack }) => (
+      <div>
+        <h2 className="text-xl font-bold mb-1">🎯 今月、できるようになったことは？</h2>
+        <p className="text-sm text-gray-500 mb-6">AIのおかげで「これ前はできなかった」ってこと（任意）</p>
+        <textarea
+          value={answers.didable}
+          onChange={e => update('didable', e.target.value)}
+          rows={4}
+          placeholder="例：提案資料の初稿をAIに任せられるようになった"
+          className="w-full p-3 border rounded-lg text-base"
+        />
+        <div className="flex justify-between mt-6">
+          <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+          <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
+        </div>
+      </div>
+    );
+
+    const CommentStep = ({ answers, update, onSubmit, onBack, submitting }) => (
+      <div>
+        <h2 className="text-xl font-bold mb-1">💬 最後にひとこと（任意）</h2>
+        <p className="text-sm text-gray-500 mb-6">困ってること・もっとこうしたい等</p>
+        <textarea
+          value={answers.comment}
+          onChange={e => update('comment', e.target.value)}
+          rows={3}
+          placeholder="自由にどうぞ"
+          className="w-full p-3 border rounded-lg text-base"
+        />
+        <div className="flex justify-between mt-6">
+          <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+          <button
+            onClick={onSubmit}
+            disabled={submitting}
+            className="px-6 py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold disabled:opacity-50"
+          >{submitting ? '送信中...' : '結果を見る 🎉'}</button>
+        </div>
+      </div>
+    );
+
+    // ============ 回答結果画面 ============
+    const SurveyResult = ({ result, aiComment, aiLoading, onComplete }) => {
+      const { score, stage } = result;
+      return (
+        <div className="max-w-2xl mx-auto px-4 py-6">
+          <div className="bg-white rounded-2xl border p-6 text-center slide-in">
+            <h2 className="text-sm text-gray-500">今月のあなたのスコア</h2>
+            <div className="text-7xl font-bold my-3" style={{ color: stage.pixelColor }}>{score}</div>
+            <div className="text-sm text-gray-500 mb-6">/ 100pt</div>
+
+            <div className="flex justify-center mb-4">
+              <PixelCat stage={stage} size="lg" />
+            </div>
+            <h3 className="text-xl font-bold mt-3">{stage.name}</h3>
+
+            <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-yellow-50 to-pink-50 border border-yellow-200">
+              {aiLoading ? (
+                <div className="text-sm text-gray-500 typing">考え中にゃ</div>
+              ) : (
+                <p className="text-sm whitespace-pre-wrap">{aiComment}</p>
+              )}
+            </div>
+
+            <div className="mt-8">
+              <h4 className="text-xs text-gray-500 mb-3">🐱 6段階成長マップ</h4>
+              <div className="flex justify-center items-end gap-1 overflow-x-auto pb-2">
+                {CAT_STAGES.map(s => (
+                  <div key={s.id} className="flex flex-col items-center" style={{ minWidth: 60 }}>
+                    <PixelCat stage={s} size="sm" highlight={s.id === stage.id} />
+                    <div className="text-xs mt-1 font-medium">{s.name}</div>
+                    <div className="text-[10px] text-gray-400">{s.minScore}-{s.maxScore}</div>
+                    {s.id === stage.id && <div className="text-[10px] text-indigo-600 font-bold mt-1">👇 今ここ</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={onComplete}
+              className="mt-8 px-6 py-3 rounded-lg bg-gray-900 text-white font-medium"
+            >ダッシュボードへ →</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ 管理画面 ============
+    const AdminPanel = ({ master, setMaster, webhookUrl, setWebhookUrl, onLogout }) => {
+      const [tab, setTab] = useState('initiatives');
+      return (
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold">🛠 管理画面</h2>
+            <button onClick={onLogout} className="text-sm text-gray-500">ログアウト</button>
+          </div>
+          <div className="flex gap-2 mb-4 overflow-x-auto">
+            {[
+              ['initiatives','施策リスト'],
+              ['settings','設定'],
+              ['webhook','Webhook URL'],
+            ].map(([k, l]) => (
+              <button
+                key={k}
+                onClick={() => setTab(k)}
+                className={`px-4 py-2 rounded-lg text-sm whitespace-nowrap ${tab === k ? 'bg-gray-900 text-white' : 'bg-gray-100'}`}
+              >{l}</button>
+            ))}
+          </div>
+
+          {tab === 'initiatives' && <InitiativesTab master={master} setMaster={setMaster} />}
+          {tab === 'settings' && <SettingsTab master={master} setMaster={setMaster} />}
+          {tab === 'webhook' && <WebhookTab webhookUrl={webhookUrl} setWebhookUrl={setWebhookUrl} />}
+        </div>
+      );
+    };
+
+    const InitiativesTab = ({ master, setMaster }) => {
+      const [name, setName] = useState('');
+      const [detail, setDetail] = useState('');
+      const add = () => {
+        if (!name) return;
+        const id = 'I' + String(master.initiatives.length + 1).padStart(3, '0');
+        const m = new Date().toISOString().slice(0,7);
+        setMaster(prev => ({ ...prev, initiatives: [...prev.initiatives, { id, name, month: m, detail, active: true }] }));
+        setName(''); setDetail('');
+      };
+      const toggle = id => setMaster(prev => ({ ...prev, initiatives: prev.initiatives.map(i => i.id === id ? { ...i, active: !i.active } : i) }));
+      const remove = id => { if (confirm('削除しますか？')) setMaster(prev => ({ ...prev, initiatives: prev.initiatives.filter(i => i.id !== id) })); };
+
+      return (
+        <Card title="📌 施策リスト">
+          <div className="space-y-2 mb-4">
+            {master.initiatives.map(i => (
+              <div key={i.id} className={`p-3 rounded-lg border flex items-center justify-between ${i.active ? 'bg-white' : 'bg-gray-50 opacity-60'}`}>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{i.name}</div>
+                  <div className="text-xs text-gray-500">{i.month} {i.detail && '・' + i.detail}</div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => toggle(i.id)} className="text-xs px-2 py-1 rounded bg-gray-100">{i.active ? '無効化' : '有効化'}</button>
+                  <button onClick={() => remove(i.id)} className="text-xs px-2 py-1 rounded bg-red-50 text-red-600">削除</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-bold mb-2">＋ 新しい施策を追加</h4>
+            <input type="text" placeholder="施策名（例：Shopifyコネクタ設定）" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border rounded mb-2 text-sm" />
+            <input type="text" placeholder="詳細（任意）" value={detail} onChange={e => setDetail(e.target.value)} className="w-full p-2 border rounded mb-2 text-sm" />
+            <button onClick={add} className="px-4 py-2 rounded bg-gray-900 text-white text-sm">追加</button>
+          </div>
+        </Card>
+      );
+    };
+
+    const SettingsTab = ({ master, setMaster }) => {
+      const update = (key, val) => setMaster(prev => ({ ...prev, settings: { ...prev.settings, [key]: val } }));
+      const s = master.settings;
+      return (
+        <Card title="⚙️ 設定">
+          <div className="space-y-4">
+            <label className="block">
+              <span className="text-sm text-gray-600">人件費単価（時給／円）</span>
+              <input type="number" value={s['人件費単価_時給'] || 5000} onChange={e => update('人件費単価_時給', parseInt(e.target.value))} className="w-full p-2 border rounded mt-1" />
+            </label>
+            <label className="block">
+              <span className="text-sm text-gray-600">AI月額コスト（円）</span>
+              <input type="number" value={s['AI月額コスト'] || 50000} onChange={e => update('AI月額コスト', parseInt(e.target.value))} className="w-full p-2 border rounded mt-1" />
+            </label>
+            <p className="text-xs text-gray-500">※ スプシ「設定」タブが更新されるのはWebhook経由保存時のみ。手動で同期する場合はスプシ側を直接編集。</p>
+          </div>
+        </Card>
+      );
+    };
+
+    const WebhookTab = ({ webhookUrl, setWebhookUrl }) => {
+      const [val, setVal] = useState(webhookUrl || '');
+      return (
+        <Card title="🔗 Webhook URL設定">
+          <p className="text-sm text-gray-600 mb-3">Google Apps ScriptでデプロイしたWebhook URLを設定すると、回答がスプレッドシートに保存されます。未設定の場合はサンプルデータで動作します。</p>
+          <input
+            type="text"
+            value={val}
+            onChange={e => setVal(e.target.value)}
+            placeholder="https://script.google.com/macros/s/AKfycb..../exec"
+            className="w-full p-3 border rounded-lg text-sm font-mono"
+          />
+          <button
+            onClick={() => { setWebhookUrl(val); alert('保存しました'); }}
+            className="mt-3 px-4 py-2 rounded bg-gray-900 text-white text-sm"
+          >保存</button>
+        </Card>
+      );
+    };
+
+    // ============ 経営層ダッシュボード ============
+    const ExecDashboard = ({ master, responses, webhookUrl, onLogout }) => {
+      const [aiAnalysis, setAiAnalysis] = useState('');
+      const [aiLoading, setAiLoading] = useState(false);
+
+      const currentMonth = '2026-05';
+      const lastMonth = '2026-04';
+      const thisM = responses.filter(r => r.month === currentMonth);
+      const lastM = responses.filter(r => r.month === lastMonth);
+
+      const totalCount = master.names.filter(n => n.active).length;
+      const respRate = totalCount ? Math.round(thisM.length / totalCount * 100) : 0;
+      const totalSaved = thisM.reduce((s, r) => s + (r.q3 || 0), 0);
+      const lastSaved = lastM.reduce((s, r) => s + (r.q3 || 0), 0);
+      const heavyCount = thisM.filter(r => r.q1 === 'ほぼ毎日').length;
+      const heavyRate = thisM.length ? Math.round(heavyCount / thisM.length * 100) : 0;
+      const didableCount = thisM.filter(r => r.didable && r.didable.length > 5).length;
+
+      const hourlyRate = master.settings['人件費単価_時給'] || 5000;
+      const aiCost = master.settings['AI月額コスト'] || 50000;
+      const monthlySaving = totalSaved * hourlyRate;
+      const yearlySaving = monthlySaving * 12;
+      const roi = aiCost > 0 ? Math.round((monthlySaving - aiCost) / aiCost * 100) : 0;
+
+      // 部署別
+      const deptStats = master.departments.map(d => {
+        const m = thisM.filter(r => r.department === d);
+        const saved = m.reduce((s,r) => s + (r.q3 || 0), 0);
+        const cost = saved * hourlyRate;
+        const did = m.filter(r => r.didable && r.didable.length > 5).length;
+        return { dept: d, count: m.length, saved, cost, did };
+      });
+
+      // 施策別実施率
+      const initStats = master.initiatives.filter(i => i.active).map(i => {
+        const did = thisM.filter(r => (r.initiatives || []).includes(i.id)).length;
+        return { name: i.name, did, rate: thisM.length ? Math.round(did / thisM.length * 100) : 0 };
+      });
+
+      // 未回答者
+      const responded = new Set(thisM.map(r => r.name));
+      const unanswered = master.names.filter(n => n.active && !responded.has(n.name));
+
+      // できたこと の声
+      const voices = thisM.filter(r => r.didable && r.didable.length > 5).slice(0, 5);
+
+      const generateAi = async () => {
+        if (!webhookUrl) {
+          setAiAnalysis(`【サンプル分析】
+今月の全社合計時短時間は ${totalSaved.toFixed(1)}h（先月比 ${(totalSaved - lastSaved > 0 ? '+' : '')}${(totalSaved - lastSaved).toFixed(1)}h）。
+ヘビーユーザー率は ${heavyRate}% で、特に「${deptStats.sort((a,b)=>b.saved-a.saved)[0]?.dept}」部署の貢献が大きい。
+施策実施率は最大 ${Math.max(...initStats.map(i=>i.rate), 0)}% で、まだ伸びしろあり。
+Webhook URL未設定のため、これはサンプル文です。`);
+          return;
+        }
+        setAiLoading(true);
+        try {
+          const res = await callGas(webhookUrl, 'generate_exec_analysis', {
+            currentMonth, lastMonth, totalSaved, lastSaved, heavyRate, respRate, deptStats, initStats
+          });
+          setAiAnalysis(res.analysis || 'AI分析を生成できませんでした');
+        } catch (e) {
+          setAiAnalysis(`エラー: ${e.message}`);
+        }
+        setAiLoading(false);
+      };
+
+      return (
+        <div className="bg-gray-50 min-h-screen">
+          <div className="max-w-[1600px] mx-auto p-4">
+            <div className="flex justify-between items-center mb-4 print:hidden">
+              <h2 className="text-xl font-bold">🔒 経営層ダッシュボード（{currentMonth}）</h2>
+              <div className="flex gap-2">
+                <button onClick={generateAi} disabled={aiLoading} className="px-3 py-2 rounded bg-indigo-600 text-white text-sm disabled:opacity-50">
+                  {aiLoading ? '生成中...' : '🤖 AI分析を生成'}
+                </button>
+                <button onClick={() => window.print()} className="px-3 py-2 rounded bg-gray-700 text-white text-sm">🖨 印刷</button>
+                <button onClick={onLogout} className="px-3 py-2 rounded bg-gray-200 text-sm">ログアウト</button>
+              </div>
+            </div>
+
+            {/* 16:9 横長スライド領域 */}
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '600px' }}>
+              <div className="p-8 h-full grid grid-cols-12 grid-rows-6 gap-4">
+                {/* ROIバナー（最上段） */}
+                <div className="col-span-12 row-span-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl p-4 flex items-center justify-around">
+                  <div className="text-center">
+                    <div className="text-xs opacity-80">月間コスト削減</div>
+                    <div className="text-2xl font-bold">¥{monthlySaving.toLocaleString()}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs opacity-80">ROI</div>
+                    <div className="text-2xl font-bold">{roi > 0 ? '+' : ''}{roi}%</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs opacity-80">年間換算削減</div>
+                    <div className="text-2xl font-bold">¥{yearlySaving.toLocaleString()}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs opacity-80">AI月額コスト</div>
+                    <div className="text-2xl font-bold">¥{aiCost.toLocaleString()}</div>
+                  </div>
+                </div>
+
+                {/* KPI4枚 */}
+                <div className="col-span-3 row-span-1 bg-emerald-50 rounded-xl p-3 flex flex-col justify-center">
+                  <div className="text-xs text-emerald-700">合計時短時間（今月）</div>
+                  <div className="text-3xl font-bold text-emerald-700">{totalSaved.toFixed(1)}h</div>
+                  <div className="text-xs text-emerald-600">先月比 {totalSaved - lastSaved > 0 ? '+' : ''}{(totalSaved - lastSaved).toFixed(1)}h</div>
+                </div>
+                <div className="col-span-3 row-span-1 bg-amber-50 rounded-xl p-3 flex flex-col justify-center">
+                  <div className="text-xs text-amber-700">新規創出件数</div>
+                  <div className="text-3xl font-bold text-amber-700">{didableCount}</div>
+                  <div className="text-xs text-amber-600">「できるようになった」回答</div>
+                </div>
+                <div className="col-span-3 row-span-1 bg-rose-50 rounded-xl p-3 flex flex-col justify-center">
+                  <div className="text-xs text-rose-700">施策実施率（最大）</div>
+                  <div className="text-3xl font-bold text-rose-700">{Math.max(...initStats.map(i=>i.rate), 0)}%</div>
+                  <div className="text-xs text-rose-600">{initStats.length}施策中</div>
+                </div>
+                <div className="col-span-3 row-span-1 bg-sky-50 rounded-xl p-3 flex flex-col justify-center">
+                  <div className="text-xs text-sky-700">ヘビーユーザー率</div>
+                  <div className="text-3xl font-bold text-sky-700">{heavyRate}%</div>
+                  <div className="text-xs text-sky-600">毎日活用者 / 回答者</div>
+                </div>
+
+                {/* AI分析 */}
+                <div className="col-span-6 row-span-2 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200 overflow-hidden">
+                  <div className="text-xs text-indigo-700 font-bold mb-2">🤖 AI分析コメント（前月比）</div>
+                  <div className="text-sm whitespace-pre-wrap overflow-auto" style={{ maxHeight: 180 }}>
+                    {aiAnalysis || '「🤖 AI分析を生成」ボタンを押すと、前月比の自然文分析が表示されます。'}
+                  </div>
+                </div>
+
+                {/* 部署別テーブル */}
+                <div className="col-span-6 row-span-2 bg-white rounded-xl p-3 border overflow-auto">
+                  <div className="text-xs font-bold mb-2">📊 部署別パフォーマンス</div>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b text-gray-500">
+                        <th className="text-left py-1">部署</th>
+                        <th className="text-right">回答</th>
+                        <th className="text-right">時短h</th>
+                        <th className="text-right">削減¥</th>
+                        <th className="text-right">新規</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deptStats.map(d => (
+                        <tr key={d.dept} className="border-b">
+                          <td className="py-1">{d.dept}</td>
+                          <td className="text-right">{d.count}</td>
+                          <td className="text-right">{d.saved.toFixed(1)}</td>
+                          <td className="text-right">¥{d.cost.toLocaleString()}</td>
+                          <td className="text-right">{d.did}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 施策実施率 */}
+                <div className="col-span-4 row-span-2 bg-white rounded-xl p-3 border overflow-auto">
+                  <div className="text-xs font-bold mb-2">📌 施策別実施率</div>
+                  <div className="space-y-2">
+                    {initStats.map(i => (
+                      <div key={i.name}>
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className="truncate">{i.name}</span>
+                          <span className="font-bold">{i.did}名 ({i.rate}%)</span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-indigo-500" style={{ width: `${i.rate}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* できたことの声 */}
+                <div className="col-span-4 row-span-2 bg-yellow-50 rounded-xl p-3 border border-yellow-200 overflow-auto">
+                  <div className="text-xs font-bold mb-2">💬 できるようになったことの声</div>
+                  <div className="space-y-2">
+                    {voices.length === 0 ? (
+                      <p className="text-xs text-gray-400">まだ投稿はありません</p>
+                    ) : (
+                      voices.map((v, i) => (
+                        <div key={i} className="text-xs p-2 bg-white rounded border-l-2 border-yellow-400">
+                          <p>{v.didable}</p>
+                          <p className="text-gray-500 mt-1">— {v.department}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* 未回答者 */}
+                <div className="col-span-4 row-span-2 bg-gray-50 rounded-xl p-3 border overflow-auto">
+                  <div className="text-xs font-bold mb-2">⏳ 未回答者（{unanswered.length}名）</div>
+                  <div className="space-y-1">
+                    {unanswered.length === 0 ? (
+                      <p className="text-xs text-emerald-600 font-bold">✨ 全員回答済み！</p>
+                    ) : (
+                      unanswered.map(u => (
+                        <div key={u.name} className="text-xs flex justify-between">
+                          <span>{u.name}</span>
+                          <span className="text-gray-500">{u.department.slice(0, 6)}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ ログインモーダル ============
+    const LoginModal = ({ title, onSubmit, onCancel }) => {
+      const [pw, setPw] = useState('');
+      return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-1">🔒 {title}</h3>
+            <p className="text-sm text-gray-500 mb-4">パスワードを入力してください</p>
+            <input
+              type="password"
+              value={pw}
+              onChange={e => setPw(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && onSubmit(pw)}
+              className="w-full p-3 border rounded-lg"
+              autoFocus
+            />
+            <div className="flex gap-2 mt-4">
+              <button onClick={onCancel} className="flex-1 py-2 rounded bg-gray-100 text-sm">キャンセル</button>
+              <button onClick={() => onSubmit(pw)} className="flex-1 py-2 rounded bg-gray-900 text-white text-sm">ログイン</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ============ ルート ============
+    const App = () => {
+      const [view, setView] = useState('dashboard');
+      const [master, setMaster] = useState(SAMPLE_MASTER);
+      const [responses, setResponses] = useState(SAMPLE_RESPONSES);
+      const [webhookUrl, setWebhookUrl] = useState('');
+      const [loginMode, setLoginMode] = useState(null); // 'admin' | 'exec' | null
+      const [adminAuth, setAdminAuth] = useState(false);
+      const [execAuth, setExecAuth] = useState(false);
+
+      // 初期ロード（localStorageからwebhookUrl復元・GAS取得）
+      useEffect(() => {
+        const cfg = loadConfig();
+        if (cfg.webhookUrl) {
+          setWebhookUrl(cfg.webhookUrl);
+          // GASから最新マスター取得
+          callGas(cfg.webhookUrl, 'get_master').then(d => {
+            if (d?.names) setMaster(d);
+          }).catch(e => console.warn('GAS取得失敗・サンプル使用:', e));
+          callGas(cfg.webhookUrl, 'get_dashboard').then(d => {
+            if (d?.responses) setResponses(d.responses);
+          }).catch(() => {});
+        }
+      }, []);
+
+      const persistWebhook = (url) => {
+        setWebhookUrl(url);
+        saveConfig({ webhookUrl: url });
+      };
+
+      const persistMaster = (newM) => {
+        const next = typeof newM === 'function' ? newM(master) : newM;
+        setMaster(next);
+        if (webhookUrl) {
+          callGas(webhookUrl, 'update_master', { master: next, password: 'admin2026' })
+            .catch(e => console.warn('保存失敗:', e));
+        }
+      };
+
+      const handleAdminLogin = (pw) => {
+        const correct = master.settings['ADMIN_PASSWORD'] || 'admin2026';
+        if (pw === correct) {
+          setAdminAuth(true);
+          setLoginMode(null);
+          setView('admin');
+        } else alert('パスワードが違います');
+      };
+      const handleExecLogin = (pw) => {
+        const correct = master.settings['EXEC_PASSWORD'] || 'exec2026';
+        if (pw === correct) {
+          setExecAuth(true);
+          setLoginMode(null);
+          setView('exec');
+        } else alert('パスワードが違います');
+      };
+
+      return (
+        <div className="min-h-screen">
+          <Header
+            currentView={view}
+            setView={setView}
+            onAdmin={() => adminAuth ? setView('admin') : setLoginMode('admin')}
+            onExec={() => execAuth ? setView('exec') : setLoginMode('exec')}
+          />
+
+          {view === 'dashboard' && <PublicDashboard responses={responses} master={master} />}
+          {view === 'survey' && <Survey master={master} webhookUrl={webhookUrl} onComplete={() => setView('dashboard')} />}
+          {view === 'admin' && adminAuth && (
+            <AdminPanel
+              master={master}
+              setMaster={persistMaster}
+              webhookUrl={webhookUrl}
+              setWebhookUrl={persistWebhook}
+              onLogout={() => { setAdminAuth(false); setView('dashboard'); }}
+            />
+          )}
+          {view === 'exec' && execAuth && (
+            <ExecDashboard
+              master={master}
+              responses={responses}
+              webhookUrl={webhookUrl}
+              onLogout={() => { setExecAuth(false); setView('dashboard'); }}
+            />
+          )}
+
+          {loginMode === 'admin' && <LoginModal title="管理画面ログイン" onSubmit={handleAdminLogin} onCancel={() => setLoginMode(null)} />}
+          {loginMode === 'exec' && <LoginModal title="経営層ダッシュボード" onSubmit={handleExecLogin} onCancel={() => setLoginMode(null)} />}
+
+          {!webhookUrl && (
+            <div className="fixed bottom-4 right-4 bg-yellow-100 border border-yellow-300 rounded-lg p-3 text-xs max-w-xs shadow-lg print:hidden">
+              💡 サンプルデータで動作中。実データに切り替えるには右上🛠から Webhook URL を設定してね。
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
