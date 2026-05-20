@@ -150,6 +150,9 @@ function submitResponse(data) {
     score                                       // T スコア(XP)
   ];
   sheet.appendRow(row);
+  // B列「対象月」をDate型自動変換から守るため、書式を文字列に強制
+  const lastRow = sheet.getLastRow();
+  sheet.getRange(lastRow, 2).setNumberFormat('@').setValue(month);
   return { ok: true, score };
 }
 
@@ -175,9 +178,19 @@ function getDashboard() {
 
   const responses = rows.slice(1).filter(r => r[0]).map(r => {
     const ts = new Date(r[0]);
+    // 対象月（B列）はDate型自動変換されてる可能性があるため正規化
+    let month;
+    if (r[1] instanceof Date) {
+      month = Utilities.formatDate(r[1], 'JST', 'yyyy-MM');
+    } else if (r[1]) {
+      const s = String(r[1]);
+      month = /^\d{4}-\d{2}/.test(s) ? s.slice(0, 7) : Utilities.formatDate(ts, 'JST', 'yyyy-MM');
+    } else {
+      month = Utilities.formatDate(ts, 'JST', 'yyyy-MM');
+    }
     return {
       timestamp: ts.toISOString(),
-      month: r[1] || Utilities.formatDate(ts, 'JST', 'yyyy-MM'),
+      month: month,
       name: r[2],
       department: r[3],
       q1: r[4],

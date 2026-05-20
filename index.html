@@ -322,6 +322,19 @@
         .reduce((sum, r) => sum + (r.score || 0), 0);
     };
 
+    // 月を yyyy-MM 形式に正規化（Date型 / ISO文字列 / yyyy-MM どれでも対応）
+    const normalizeMonth = (m) => {
+      if (!m) return '';
+      if (m instanceof Date) {
+        const y = m.getFullYear();
+        const mo = String(m.getMonth() + 1).padStart(2, '0');
+        return `${y}-${mo}`;
+      }
+      const s = String(m);
+      const match = s.match(/^(\d{4})-(\d{2})/);
+      return match ? `${match[1]}-${match[2]}` : '';
+    };
+
     // ============ 紙吹雪（長め・3波） ============
     const fireConfetti = () => {
       const colors = ['#FFD700','#FF6B6B','#4ECDC4','#95E1D3','#F38181','#AA96DA','#FFB6C1','#87CEEB'];
@@ -1398,17 +1411,22 @@
 
       // 表示月セレクター（過去データも見れる）
       const availableMonths = useMemo(() => {
-        const ms = [...new Set((responses || []).map(r => r.month))].filter(Boolean).sort();
+        const ms = [...new Set((responses || []).map(r => normalizeMonth(r.month)))].filter(Boolean).sort();
         // 今月も常に選べるようにする
-        const now = new Date().toISOString().slice(0, 7);
-        if (!ms.includes(now)) ms.push(now);
+        const now = new Date();
+        const thisM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        if (!ms.includes(thisM)) ms.push(thisM);
         return ms.sort();
       }, [responses]);
       const [viewMonth, setViewMonth] = useState(() => availableMonths[availableMonths.length - 1] || '2026-05');
       const prevMonth = useMemo(() => {
-        const d = new Date(viewMonth + '-01');
-        d.setMonth(d.getMonth() - 1);
-        return d.toISOString().slice(0, 7);
+        const normalized = normalizeMonth(viewMonth);
+        if (!/^\d{4}-\d{2}$/.test(normalized)) return '';
+        const [y, mo] = normalized.split('-').map(Number);
+        const d = new Date(y, mo - 2, 1); // mo-1（0始まり）-1（前月）= mo-2
+        const py = d.getFullYear();
+        const pm = String(d.getMonth() + 1).padStart(2, '0');
+        return `${py}-${pm}`;
       }, [viewMonth]);
 
       // 月切り替え時にAI分析・ダイジェストはリセット
@@ -1420,8 +1438,8 @@
       const currentMonth = viewMonth;
       const lastMonth = prevMonth;
       const responsesList = responses || [];
-      const thisM = responsesList.filter(r => r.month === viewMonth);
-      const lastM = responsesList.filter(r => r.month === prevMonth);
+      const thisM = responsesList.filter(r => normalizeMonth(r.month) === viewMonth);
+      const lastM = responsesList.filter(r => normalizeMonth(r.month) === prevMonth);
 
       const totalCount = (master?.names || []).filter(n => n.active).length;
       const respRate = totalCount ? Math.round(thisM.length / totalCount * 100) : 0;
@@ -2175,7 +2193,10 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
             if (d?.names) setMaster(d);
           }).catch(e => console.warn('GAS取得失敗・サンプル使用:', e));
           callGas(cfg.webhookUrl, 'get_dashboard').then(d => {
-            if (d?.responses) setResponses(d.responses);
+            if (d?.responses) {
+              // monthを正規化（Date型→yyyy-MM文字列）
+              setResponses(d.responses.map(r => ({ ...r, month: normalizeMonth(r.month) })));
+            }
           }).catch(() => {});
         }
       }, []);
