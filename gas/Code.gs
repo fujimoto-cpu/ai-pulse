@@ -38,6 +38,8 @@ function doPost(e) {
     if (action === 'submit_response') return jsonOut(submitResponse(data));
     if (action === 'generate_cat_comment') return jsonOut(generateCatComment(data));
     if (action === 'generate_exec_analysis') return jsonOut(generateExecAnalysis(data));
+    if (action === 'generate_monthly_digest') return jsonOut(generateMonthlyDigest(data));
+    if (action === 'send_to_slack') return jsonOut(sendToSlack(data));
     if (action === 'update_master') return jsonOut(updateMaster(data));
     return jsonOut({ error: 'unknown action: ' + action });
   } catch (err) {
@@ -58,7 +60,7 @@ function getMaster() {
   const initSheet = ss.getSheetByName('施策');
   const settingsSheet = ss.getSheetByName('設定');
 
-  const names = sheetToObjects(namesSheet, ['name', 'department', 'email', 'active']);
+  const names = sheetToObjects(namesSheet, ['name', 'department', 'email', 'active', 'pin']);
   const initiatives = sheetToObjects(initSheet, ['id', 'name', 'month', 'detail', 'active']);
   const settings = {};
   if (settingsSheet) {
@@ -119,10 +121,10 @@ function calcScore(ans) {
   const q1Map = { 'ほぼ毎日': 25, '週2-3日': 18, '週1日': 10, 'ほぼ使ってない': 3 };
   s += q1Map[ans.q1] || 0;
   s += Math.min(20, (ans.q2 || []).length * 5);
-  s += Math.min(20, Math.round((ans.q3 || 0) * 2));
+  s += Math.min(20, Math.round((ans.q3 || 0) / 5)); // q3=% (0-100)
   const q4Map = { '😫': 0, '😐': 5, '😊': 10, '🔥': 15 };
   s += q4Map[ans.q4] || 0;
-  const q5Map = { 'プロンプト改善': 10, '新ツール試す': 8, 'チーム共有': 10, '現状維持': 3 };
+  const q5Map = { '個人向上': 10, 'チーム巻き込み': 10, '新ツール開拓': 10, '現状維持': 3 };
   s += q5Map[ans.q5] || 0;
   const q6Map = { '😫': 0, '😐': 3, '😊': 7, '🔥': 10 };
   s += q6Map[ans.q6] || 0;
@@ -236,6 +238,175 @@ function callClaude(prompt, maxTokens) {
   const body = JSON.parse(res.getContentText());
   if (body.error) throw new Error(body.error.message || JSON.stringify(body.error));
   return body.content[0].text;
+}
+
+// ============ 月次ダイジェスト生成 ============
+function generateMonthlyDigest(data) {
+  const {
+    currentMonth, totalSaved, lastSaved, monthlySaving, roi, respRate, heavyRate,
+    deptStats = [], initStats = [], voices = [], totalCount, responseCount
+  } = data;
+
+  const fallback = `🐱 AI Pulse 月次ダイジェスト（${currentMonth}）
+
+📊 主要KPI
+・合計時短時間：${(totalSaved || 0).toFixed(1)}h（先月比 ${totalSaved - lastSaved > 0 ? '+' : ''}${(totalSaved - lastSaved).toFixed(1)}h）
+・月間コスト削減：¥${(monthlySaving || 0).toLocaleString()}（ROI ${roi > 0 ? '+' : ''}${roi || 0}%）
+・回答率：${respRate || 0}%（${responseCount || 0}/${totalCount || 0}名）
+・ヘビーユーザー率：${heavyRate || 0}%
+
+🏆 部署別トップ3
+${[...deptStats].sort((a,b) => b.saved - a.saved).slice(0,3).map((d,i) => `${i+1}. ${d.dept}：${d.saved.toFixed(1)}h（${d.count}名）`).join('\n')}
+
+💡 主な「できるようになったこと」
+${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
+
+（AI Pulse / KONNEKT INTERNATIONAL）`;
+
+  if (!ANTHROPIC_API_KEY) return { digest: fallback };
+
+  const prompt = `あなたはKONNEKT INTERNATIONALのAI推進担当アシスタントです。経営層（社長・役員・AI推進リーダー）にSlack DMで送る月次ダイジェスト本文を作成してください。
+
+【今月のデータ】
+- 月：${currentMonth}
+- 合計時短時間：${totalSaved}h（先月比 ${(totalSaved - lastSaved).toFixed(1)}h）
+- 月間コスト削減：¥${monthlySaving?.toLocaleString()}（ROI ${roi}%）
+- 回答率：${respRate}%（${responseCount}/${totalCount}名）
+- ヘビーユーザー率：${heavyRate}%
+- 部署別：${deptStats.map(d => `${d.dept}=${d.saved.toFixed(1)}h(${d.count}名)`).join(', ')}
+- 施策実施率：${initStats.map(i => `${i.name}=${i.rate}%`).join(', ')}
+- できるようになったこと：${voices.slice(0,5).map(v => `「${v.didable}」(${v.department})`).join(' / ')}
+
+【出力ルール】
+- Slack DMで読みやすい構成（絵文字・改行・箇条書き）
+- 冒頭に「🐱 AI Pulse 月次ダイジェスト（${currentMonth}）」
+- 数字を必ず入れる・前月比に触れる
+- 3セクション程度：①主要KPI ②今月のハイライト ③経営への提言（1-2行）
+- 全体で15行以内・600字以内
+- 文末に「（AI Pulse / KONNEKT INTERNATIONAL）」`;
+
+  try {
+    const digest = callClaude(prompt, 1200);
+    return { digest };
+  } catch (e) {
+    return { digest: fallback, warning: e.message };
+  }
+}
+
+// ============ Slack配信 ============
+function sendToSlack(data) {
+  const slackToken = PROPS.getProperty('SLACK_BOT_TOKEN');
+  if (!slackToken) throw new Error('SLACK_BOT_TOKEN が未設定です（スクリプトプロパティで設定してください）');
+
+  // 配信先：スプシ「設定」タブの SLACK_RECIPIENTS を「,」区切りで取得
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const settingsSheet = ss.getSheetByName('設定');
+  let recipientsRaw = '';
+  if (settingsSheet) {
+    const rows = settingsSheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === 'SLACK_RECIPIENTS') { recipientsRaw = String(rows[i][1] || ''); break; }
+    }
+  }
+  if (!recipientsRaw) throw new Error('スプシ「設定」タブに SLACK_RECIPIENTS（カンマ区切りメンバーID）を登録してください');
+
+  const recipients = recipientsRaw.split(',').map(s => s.trim()).filter(Boolean);
+  const message = data.message || '';
+  const sent = [];
+  const failed = [];
+
+  for (const userId of recipients) {
+    // im.open でDMチャンネル取得
+    const openRes = UrlFetchApp.fetch('https://slack.com/api/conversations.open', {
+      method: 'post',
+      headers: { 'Authorization': 'Bearer ' + slackToken, 'Content-Type': 'application/json' },
+      payload: JSON.stringify({ users: userId }),
+      muteHttpExceptions: true
+    });
+    const openBody = JSON.parse(openRes.getContentText());
+    if (!openBody.ok) { failed.push(`${userId}: ${openBody.error}`); continue; }
+    const channelId = openBody.channel.id;
+
+    // chat.postMessage
+    const postRes = UrlFetchApp.fetch('https://slack.com/api/chat.postMessage', {
+      method: 'post',
+      headers: { 'Authorization': 'Bearer ' + slackToken, 'Content-Type': 'application/json; charset=utf-8' },
+      payload: JSON.stringify({ channel: channelId, text: message }),
+      muteHttpExceptions: true
+    });
+    const postBody = JSON.parse(postRes.getContentText());
+    if (!postBody.ok) { failed.push(`${userId}: ${postBody.error}`); continue; }
+    sent.push(userId);
+  }
+
+  return { ok: failed.length === 0, sentTo: sent, failed };
+}
+
+// ============ 月次自動ダイジェスト（GASトリガー用） ============
+/**
+ * 月初の朝8:00 に GAS時間トリガーで自動実行する関数。
+ * トリガー設定方法：
+ *   左サイドバー「トリガー」→「+ トリガーを追加」
+ *   関数：monthlyAutoDigest
+ *   イベント：時間主導型 / 月タイマー / 1日 / 午前8〜9時
+ */
+function monthlyAutoDigest() {
+  try {
+    const dashboard = getDashboard();
+    const responses = dashboard.responses;
+    const now = new Date();
+    // 前月をターゲットにする
+    const target = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const currentMonth = Utilities.formatDate(target, 'JST', 'yyyy-MM');
+    const lastDate = new Date(target.getFullYear(), target.getMonth() - 1, 1);
+    const lastMonth = Utilities.formatDate(lastDate, 'JST', 'yyyy-MM');
+
+    const thisM = responses.filter(r => r.month === currentMonth);
+    const lastM = responses.filter(r => r.month === lastMonth);
+
+    const master = getMaster();
+    const totalCount = master.names.filter(n => n.active).length;
+    const hourlyRate = master.settings['人件費単価_時給'] || 5000;
+    const aiCost = master.settings['AI月額コスト'] || 50000;
+
+    // q3は業務効率化%。月160h想定で時間換算
+    const PCT_TO_HOURS = 1.6;
+    const totalSaved = thisM.reduce((s, r) => s + (r.q3 || 0) * PCT_TO_HOURS, 0);
+    const lastSaved = lastM.reduce((s, r) => s + (r.q3 || 0) * PCT_TO_HOURS, 0);
+    const heavyCount = thisM.filter(r => r.q1 === 'ほぼ毎日').length;
+    const heavyRate = thisM.length ? Math.round(heavyCount / thisM.length * 100) : 0;
+    const respRate = totalCount ? Math.round(thisM.length / totalCount * 100) : 0;
+    const monthlySaving = totalSaved * hourlyRate;
+    const roi = aiCost > 0 ? Math.round((monthlySaving - aiCost) / aiCost * 100) : 0;
+
+    const deptStats = master.departments.map(d => {
+      const m = thisM.filter(r => r.department === d);
+      return {
+        dept: d,
+        count: m.length,
+        saved: m.reduce((s, r) => s + (r.q3 || 0) * PCT_TO_HOURS, 0)
+      };
+    });
+
+    const initStats = master.initiatives.filter(i => i.active).map(i => {
+      const did = thisM.filter(r => (r.initiatives || []).includes(i.id)).length;
+      return { name: i.name, did, rate: thisM.length ? Math.round(did / thisM.length * 100) : 0 };
+    });
+
+    const voices = thisM.filter(r => r.didable && r.didable.length > 5).slice(0, 5);
+
+    const { digest } = generateMonthlyDigest({
+      currentMonth, totalSaved, lastSaved, monthlySaving, roi, respRate, heavyRate,
+      deptStats, initStats, voices, totalCount, responseCount: thisM.length
+    });
+
+    const result = sendToSlack({ message: digest });
+    Logger.log('Monthly digest sent: ' + JSON.stringify(result));
+    return result;
+  } catch (e) {
+    Logger.log('monthlyAutoDigest error: ' + e.message);
+    throw e;
+  }
 }
 
 // ============ マスター更新 ============

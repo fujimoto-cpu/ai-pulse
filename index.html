@@ -6,25 +6,51 @@
   <meta name="robots" content="noindex,nofollow" />
   <title>AI Pulse — KONNEKT INTERNATIONAL</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     body { font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; background: #fafafa; }
     .pixel-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 1px; }
     .pixel-cell { aspect-ratio: 1/1; }
     .confetti {
-      position: fixed; width: 10px; height: 10px; pointer-events: none;
-      animation: fall 3s linear forwards; z-index: 100;
+      position: fixed; width: 12px; height: 12px; pointer-events: none;
+      animation: fall 5s linear forwards; z-index: 100;
     }
     @keyframes fall {
-      to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+      0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+      80% { opacity: 1; }
+      to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
     }
     .slide-in { animation: slideIn 0.3s ease-out; }
     @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .typing::after { content: '...'; animation: typing 1.5s infinite; }
     @keyframes typing { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
+    .score-reveal { animation: scoreReveal 1.8s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes scoreReveal {
+      0% { transform: scale(0.3); opacity: 0; }
+      60% { transform: scale(1.15); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .cat-appear { animation: catAppear 1.5s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both; }
+    @keyframes catAppear {
+      0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+      60% { transform: scale(1.2) rotate(5deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+    .comment-fade { animation: commentFade 1s ease-out 1.5s both; }
+    @keyframes commentFade {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .gentle-float { animation: gentleFloat 3s ease-in-out infinite; }
+    @keyframes gentleFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
     /* スマホでナビが折れないように */
     @media (max-width: 640px) {
       .main-nav { flex-direction: row; gap: 0.5rem; }
@@ -43,96 +69,96 @@
       RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
     } = Recharts;
 
-    // ============ 6段階猫キャラ定義 ============
+    // ============ 6段階猫キャラ定義（v6ピクセルベース） ============
     const CAT_STAGES = [
       {
         id: 'egg', name: 'たまご', minScore: 0, maxScore: 19,
-        pixelColor: '#f5e6d3', bgColor: '#fff8ec', borderColor: '#e6c896',
-        message: 'まずは最初の一歩からにゃ。今月は使ってみるだけでもOKだにゃ〜',
+        pixelColor: '#D4C5A0', bgColor: '#FFFBEB', borderColor: '#FCD34D',
+        message: 'AIのたまご🥚 もうすぐ孵化するよ！',
         pixels: [
-          '00111100',
-          '01111110',
-          '11111111',
-          '11111111',
-          '11111111',
-          '11111111',
-          '01111110',
-          '00111100',
+          '00011100',
+          '00111110',
+          '01111111',
+          '01111111',
+          '01111111',
+          '01111111',
+          '00111110',
+          '00011100',
         ]
       },
       {
         id: 'cracked', name: 'ひびわれたまご', minScore: 20, maxScore: 39,
-        pixelColor: '#f5d6a3', bgColor: '#fff3dc', borderColor: '#e6b576',
-        message: '殻にヒビが入ってきたにゃ！もうすぐ生まれる予感…にゃ',
+        pixelColor: '#C9A876', bgColor: '#FEF3C7', borderColor: '#F59E0B',
+        message: '殻にヒビが入ってきたにゃ✨ もうすぐ生まれる！',
+        pixels: [
+          '00011100',
+          '00111110',
+          '01100111',
+          '01111001',
+          '01111111',
+          '01001110',
+          '00111110',
+          '00011100',
+        ]
+      },
+      {
+        id: 'chick', name: 'にゃんこ芽生え', minScore: 40, maxScore: 54,
+        pixelColor: '#374151', bgColor: '#F0FDF4', borderColor: '#86EFAC',
+        message: 'ちょっとずつAI使い始めてるにゃ🌱',
         pixels: [
           '00111100',
-          '01111110',
-          '11011011',
-          '11111111',
-          '11011111',
-          '11111011',
+          '01101110',
           '01111110',
           '00111100',
+          '01111110',
+          '01100110',
+          '01000010',
+          '00000000',
         ]
       },
       {
-        id: 'kitten', name: '子にゃんこ', minScore: 40, maxScore: 54,
-        pixelColor: '#d4a373', bgColor: '#faedcd', borderColor: '#c08552',
-        message: '生まれたにゃ〜！少しずつAIに慣れてきたね、その調子にゃ',
+        id: 'kitten', name: 'AIにゃんこ', minScore: 55, maxScore: 69,
+        pixelColor: '#1D4ED8', bgColor: '#EFF6FF', borderColor: '#93C5FD',
+        message: 'AIを使いこなせてきてるにゃ😺',
         pixels: [
           '01000010',
-          '01100110',
-          '01111110',
-          '10100101',
+          '11100111',
           '11111111',
           '01111110',
           '00111100',
-          '00100100',
+          '01011010',
+          '01000010',
+          '10000001',
         ]
       },
       {
-        id: 'cat', name: 'にゃんこ', minScore: 55, maxScore: 69,
-        pixelColor: '#9c6644', bgColor: '#ede0d4', borderColor: '#7f5539',
-        message: 'AIが日常に溶け込んできたにゃ！この調子で続けようにゃ〜',
+        id: 'cat', name: 'AIマスターにゃん', minScore: 70, maxScore: 84,
+        pixelColor: '#6D28D9', bgColor: '#F5F3FF', borderColor: '#C4B5FD',
+        message: 'AIマスターにゃん🚀✨ すごすぎる！',
         pixels: [
           '01000010',
-          '01100110',
-          '01111110',
-          '10100101',
+          '11100111',
+          '11111111',
           '11111111',
           '01111110',
-          '00111110',
-          '00111110',
+          '11111111',
+          '11011011',
+          '11000011',
         ]
       },
       {
-        id: 'ai_cat', name: 'AIにゃんこ', minScore: 70, maxScore: 84,
-        pixelColor: '#5a4a8a', bgColor: '#e8e4f3', borderColor: '#3d3168',
-        message: 'AI使いこなしてるにゃ！眼鏡もキマッてるにゃ〜✨',
-        pixels: [
-          '01000010',
-          '01100110',
-          '11011011',
-          '10100101',
-          '11111111',
-          '01111110',
-          '00111110',
-          '00111110',
-        ]
-      },
-      {
-        id: 'master', name: 'AIマスターにゃん', minScore: 85, maxScore: 100,
-        pixelColor: '#d4a017', bgColor: '#fff4cc', borderColor: '#b8860b',
-        message: 'もう完全にAIマスターにゃ！👑 みんなのお手本だにゃ〜',
+        id: 'master', name: 'AI伝説にゃん', minScore: 85, maxScore: 100,
+        pixelColor: '#D4A017', bgColor: '#FFF4CC', borderColor: '#FFD700',
+        message: 'AIの神にゃ👑 みんなのお手本！',
         pixels: [
           '10100101',
           '11111111',
-          '01100110',
-          '11011011',
-          '10100101',
+          '11100111',
           '11111111',
-          '01111110',
-          '00111110',
+          '11111111',
+          '11111111',
+          '11011011',
+          '11000011',
         ]
       },
     ];
@@ -167,30 +193,36 @@
     // ============ サンプルデータ（GAS未設定時のフォールバック） ============
     const SAMPLE_MASTER = {
       names: [
-        { name: '由羽 弘明', department: '経営・営業', email: '', active: true },
-        { name: '小柳 雅裕', department: '経営・営業', email: '', active: true },
-        { name: '福島 優美', department: 'IPMD・トレンドリサーチ', email: '', active: true },
-        { name: '引地 瑞生', department: 'IPMD・トレンドリサーチ', email: '', active: true },
-        { name: '齊藤 マミ', department: 'IPMD・トレンドリサーチ', email: '', active: true },
-        { name: '川田 嘉悠', department: 'ブランドPM・企画・EC', email: '', active: true },
-        { name: '小林 準基', department: 'ブランドPM・企画・EC', email: '', active: true },
-        { name: '菊田 舞', department: 'ブランドPM・企画・EC', email: '', active: true },
-        { name: '北園 佳樹', department: 'ブランドPM・企画・EC', email: '', active: true },
-        { name: '山﨑 丈嗣', department: '経営・営業', email: '', active: true },
-        { name: '藤本 有璃子', department: 'クリエイティブ・デザイン', email: '', active: true },
-        { name: '高垣 ひなた', department: 'クリエイティブ・デザイン', email: '', active: true },
-        { name: '植田 尋', department: 'クリエイティブ・デザイン', email: '', active: true },
-        { name: '青木 和輝', department: '生産・物流・バックオフィス', email: '', active: true },
-        { name: '井道 桃香', department: '生産・物流・バックオフィス', email: '', active: true },
-        { name: '佐生 竜輔', department: '生産・物流・バックオフィス', email: '', active: true },
-        { name: '鈴木 由洋', department: '経営・営業', email: '', active: true },
-        { name: '秋本 壮', department: '経営・営業', email: '', active: true },
+        { name: '由羽 弘明', department: '経営・営業', email: '', active: true, pin: '1111' },
+        { name: '小柳 雅裕', department: '経営・営業', email: '', active: true, pin: '1111' },
+        { name: '福島 優美', department: 'IPMD・トレンドリサーチ', email: '', active: true, pin: '1111' },
+        { name: '引地 瑞生', department: 'IPMD・トレンドリサーチ', email: '', active: true, pin: '1111' },
+        { name: '齊藤 マミ', department: 'IPMD・トレンドリサーチ', email: '', active: true, pin: '1111' },
+        { name: '川田 嘉悠', department: 'ブランドPM・企画・EC', email: '', active: true, pin: '1111' },
+        { name: '小林 準基', department: 'ブランドPM・企画・EC', email: '', active: true, pin: '1111' },
+        { name: '菊田 舞', department: 'ブランドPM・企画・EC', email: '', active: true, pin: '1111' },
+        { name: '北園 佳樹', department: 'ブランドPM・企画・EC', email: '', active: true, pin: '1111' },
+        { name: '山﨑 丈嗣', department: '経営・営業', email: '', active: true, pin: '1111' },
+        { name: '藤本 有璃子', department: 'クリエイティブ・デザイン', email: '', active: true, pin: '1111' },
+        { name: '高垣 ひなた', department: 'クリエイティブ・デザイン', email: '', active: true, pin: '1111' },
+        { name: '植田 尋', department: 'クリエイティブ・デザイン', email: '', active: true, pin: '1111' },
+        { name: '青木 和輝', department: '生産・物流・バックオフィス', email: '', active: true, pin: '1111' },
+        { name: '井道 桃香', department: '生産・物流・バックオフィス', email: '', active: true, pin: '1111' },
+        { name: '佐生 竜輔', department: '生産・物流・バックオフィス', email: '', active: true, pin: '1111' },
+        { name: '鈴木 由洋', department: '経営・営業', email: '', active: true, pin: '1111' },
+        { name: '秋本 壮', department: '経営・営業', email: '', active: true, pin: '1111' },
       ],
       departments: ['経営・営業','IPMD・トレンドリサーチ','ブランドPM・企画・EC','クリエイティブ・デザイン','生産・物流・バックオフィス'],
       initiatives: [
         { id: 'I001', name: 'Claude × Shopify連携設定', month: '2026-05', detail: 'Shopifyコネクタを社員アカウントで接続', active: true },
         { id: 'I002', name: 'Claude議事録自動化（CircleBack）', month: '2026-05', detail: 'Google Meet→自動議事録', active: true },
         { id: 'I003', name: 'プロンプト集50選 読了', month: '2026-05', detail: '社内ナレッジページを通読', active: true },
+      ],
+      q5Options: [
+        { value: '個人向上', emoji: '📚', label: '個人向上（自分のスキル磨く）', score: 10, active: true },
+        { value: 'チーム巻き込み', emoji: '🤝', label: 'チーム巻き込み（広めていく）', score: 10, active: true },
+        { value: '新ツール開拓', emoji: '🆕', label: '新ツール開拓（新しい挑戦）', score: 10, active: true },
+        { value: '現状維持', emoji: '🌿', label: '現状維持でいい', score: 3, active: true },
       ],
       settings: { '人件費単価_時給': 5000, 'AI月額コスト': 50000 }
     };
@@ -210,7 +242,7 @@
               department: p.department,
               q1: ['ほぼ毎日','週2-3日','週1日','ほぼ使ってない'][Math.floor(Math.random()*4)],
               q2: ['メール作成','議事録','リサーチ','企画書'],
-              q3: Math.floor(Math.random()*10) + 1,
+              q3: (Math.floor(Math.random()*15) + 2) * 5, // 0-95% (step 5)
               q4: ['😫','😐','😊','🔥'][Math.floor(Math.random()*4)],
               q5: ['プロンプト改善','新ツール試す','チーム共有','現状維持'][Math.floor(Math.random()*4)],
               q6: ['😫','😐','😊','🔥'][Math.floor(Math.random()*4)],
@@ -246,40 +278,50 @@
     };
 
     // ============ スコア計算 ============
-    const calcScore = (ans) => {
+    const calcScore = (ans, master) => {
       let score = 0;
-      // Q1
       score += { 'ほぼ毎日': 25, '週2-3日': 18, '週1日': 10, 'ほぼ使ってない': 3 }[ans.q1] || 0;
-      // Q2 (複数選択・上限20)
       score += Math.min(20, (ans.q2 || []).length * 5);
-      // Q3 (時間スライダー)
-      score += Math.min(20, Math.round((ans.q3 || 0) * 2));
-      // Q4
+      score += Math.min(20, Math.round((ans.q3 || 0) / 5));
       score += { '😫': 0, '😐': 5, '😊': 10, '🔥': 15 }[ans.q4] || 0;
-      // Q5
-      score += { 'プロンプト改善': 10, '新ツール試す': 8, 'チーム共有': 10, '現状維持': 3 }[ans.q5] || 0;
-      // Q6
+      // Q5: マスター（q5Options）からスコア取得・なければフォールバック
+      const q5Map = (master?.q5Options || []).reduce((m, o) => { m[o.value] = o.score || 0; return m; }, {});
+      const q5Fallback = { '個人向上': 10, 'チーム巻き込み': 10, '新ツール開拓': 10, '現状維持': 3 };
+      score += (q5Map[ans.q5] ?? q5Fallback[ans.q5]) || 0;
       score += { '😫': 0, '😐': 3, '😊': 7, '🔥': 10 }[ans.q6] || 0;
       return Math.min(100, Math.max(0, score));
     };
 
-    // ============ 紙吹雪 ============
+    // ============ 紙吹雪（長め・3波） ============
     const fireConfetti = () => {
-      const colors = ['#FFD700','#FF6B6B','#4ECDC4','#95E1D3','#F38181','#AA96DA'];
-      for (let i = 0; i < 60; i++) {
-        const el = document.createElement('div');
-        el.className = 'confetti';
-        el.style.left = Math.random() * 100 + 'vw';
-        el.style.top = '-10px';
-        el.style.background = colors[Math.floor(Math.random() * colors.length)];
-        el.style.animationDelay = Math.random() * 0.5 + 's';
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), 3500);
-      }
+      const colors = ['#FFD700','#FF6B6B','#4ECDC4','#95E1D3','#F38181','#AA96DA','#FFB6C1','#87CEEB'];
+      const shapes = ['10px', '14px', '8px'];
+      const burst = (delay, count) => {
+        setTimeout(() => {
+          for (let i = 0; i < count; i++) {
+            const el = document.createElement('div');
+            el.className = 'confetti';
+            el.style.left = Math.random() * 100 + 'vw';
+            el.style.top = '-10px';
+            const size = shapes[Math.floor(Math.random() * shapes.length)];
+            el.style.width = size;
+            el.style.height = size;
+            el.style.background = colors[Math.floor(Math.random() * colors.length)];
+            el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+            el.style.animationDelay = Math.random() * 0.5 + 's';
+            el.style.animationDuration = (4 + Math.random() * 2) + 's';
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 7000);
+          }
+        }, delay);
+      };
+      burst(0, 60);     // 第1波
+      burst(800, 40);   // 第2波
+      burst(2000, 30);  // 第3波
     };
 
     // ============ Header（ナビ） ============
-    const Header = ({ currentView, setView, onAdmin, onExec }) => (
+    const Header = ({ currentView, setView, onAdmin, onExec, onMyPage, currentUser }) => (
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -296,6 +338,11 @@
               onClick={() => setView('survey')}
               className={`px-3 py-2 rounded-lg text-sm transition ${currentView === 'survey' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
             >✏️ チェックイン</button>
+            <button
+              onClick={onMyPage}
+              className={`px-3 py-2 rounded-lg text-sm transition ${currentView === 'mypage' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
+              title={currentUser ? `${currentUser.name}のマイページ` : 'マイページ'}
+            >👤 マイページ{currentUser && <span className="hidden sm:inline text-xs ml-1 opacity-70">({currentUser.name.split(' ')[0]})</span>}</button>
             <button
               onClick={onAdmin}
               className="ml-2 p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
@@ -327,7 +374,7 @@
       const deptScores = master.departments.map(d => {
         const m = thisMonth.filter(r => r.department === d);
         return {
-          dept: d.slice(0, 8),
+          dept: d,
           score: m.length ? Math.round(m.reduce((s,r) => s + r.score, 0) / m.length) : 0,
           count: m.length
         };
@@ -366,51 +413,31 @@
             <KPI label="ヘビーユーザー率" value={`${heavyRate}%`} unit="毎日活用" color="rose" />
           </div>
 
-          <Card title="📈 月次推移">
-            <ResponsiveContainer width="100%" height={240}>
-              <LineChart data={monthly}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                <XAxis dataKey="month" />
-                <YAxis domain={[0,100]} />
-                <Tooltip />
-                <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={3} dot={{ r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card title="📈 月次推移">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={monthly}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <XAxis dataKey="month" />
+                  <YAxis domain={[0,100]} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={3} dot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card title="🏆 部署別ランキング">
               <div className="space-y-3">
                 {deptScores.map((d, i) => (
                   <div key={d.dept} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{['🥇','🥈','🥉','4','5'][i] || (i+1)}</span>
-                      <span className="font-medium text-sm">{d.dept}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xl flex-shrink-0">{['🥇','🥈','🥉','4️⃣','5️⃣'][i] || (i+1)}</span>
+                      <span className="font-medium text-sm truncate">{d.dept}</span>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0 ml-2">
                       <div className="font-bold text-indigo-600">{d.score}pt</div>
                       <div className="text-xs text-gray-500">{d.count}人</div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card title="🐱 レベル分布">
-              <div className="space-y-2">
-                {levelDist.map(l => (
-                  <div key={l.name} className="flex items-center gap-3">
-                    <span className="text-sm w-32">{l.name}</span>
-                    <div className="flex-1 bg-gray-100 h-6 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${Math.max(5, l.count / Math.max(1, totalCount) * 100)}%`,
-                          backgroundColor: l.color
-                        }}
-                      />
-                    </div>
-                    <span className="text-sm font-medium w-8 text-right">{l.count}</span>
                   </div>
                 ))}
               </div>
@@ -462,7 +489,7 @@
     const Survey = ({ master, webhookUrl, onComplete }) => {
       const [step, setStep] = useState(0);
       const [answers, setAnswers] = useState({
-        name: '', q1: '', q2: [], q3: 0, q4: '', q5: '', q6: '', q7: '',
+        name: '', q1: '', q2: [], q3: 0, q4: '', q4Note: '', q5: '', q6: '', q6Note: '', q7: '',
         initiatives: [], didable: '', comment: ''
       });
       const [submitting, setSubmitting] = useState(false);
@@ -480,7 +507,7 @@
 
       const submit = async () => {
         setSubmitting(true);
-        const score = calcScore(answers);
+        const score = calcScore(answers, master);
         const stage = getCatStage(score);
         const person = master.names.find(n => n.name === answers.name);
         const payload = {
@@ -529,7 +556,6 @@
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs text-gray-500">Step {step + 1} / {totalSteps + 1}</span>
-              <span className="text-xs text-gray-500">あと {totalSteps - step} 問で猫キャラがわかるにゃ</span>
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all" style={{ width: `${progress}%` }} />
@@ -542,7 +568,7 @@
             {step === 2 && <Q2Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
             {step === 3 && <Q3Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
             {step === 4 && <Q4Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
-            {step === 5 && <Q5Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 5 && <Q5Step answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
             {step === 6 && <Q6Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
             {step === 7 && <Q7Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
             {step === 8 && <InitiativesStep answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
@@ -621,14 +647,13 @@
       return (
         <div>
           <h2 className="text-xl font-bold mb-1">Q2. 今月AIで効率化した場面は？</h2>
-          <p className="text-sm text-gray-500 mb-6">複数選択OK（最大4つ）</p>
+          <p className="text-sm text-gray-500 mb-6">あてはまる分だけ全部選んでOK {(answers.q2 || []).length > 0 && <span className="ml-1 text-indigo-500 font-bold">{(answers.q2 || []).length}個選択中</span>}</p>
           <div className="grid grid-cols-2 gap-3">
             {opts.map(o => (
               <button
                 key={o.v}
                 onClick={() => toggle(o.v)}
-                disabled={(answers.q2 || []).length >= 4 && !(answers.q2 || []).includes(o.v)}
-                className={`p-3 rounded-xl border-2 transition text-left ${(answers.q2 || []).includes(o.v) ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-400 disabled:opacity-30'}`}
+                className={`p-3 rounded-xl border-2 transition text-left ${(answers.q2 || []).includes(o.v) ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-400'}`}
               >
                 <div className="text-2xl mb-1">{o.e}</div>
                 <div className="text-sm">{o.v}</div>
@@ -643,94 +668,159 @@
       );
     };
 
-    const Q3Step = ({ answers, update, onNext, onBack }) => (
-      <div>
-        <h2 className="text-xl font-bold mb-1">Q3. 今月、AIで節約できた時間は？</h2>
-        <p className="text-sm text-gray-500 mb-6">体感でOK・スライダーで設定してね</p>
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-2xl mb-4">
-          <div className="text-center mb-4">
-            <div className="text-5xl font-bold text-indigo-600">{answers.q3}</div>
-            <div className="text-sm text-gray-500">時間 / 月</div>
-          </div>
-          <input
-            type="range"
-            min="0" max="10" step="0.5"
-            value={answers.q3}
-            onChange={e => update('q3', parseFloat(e.target.value))}
-            className="w-full"
-          />
-          <div className="flex justify-between text-xs text-gray-500 mt-2">
-            <span>0h</span><span>5h</span><span>10h+</span>
-          </div>
-        </div>
-        <p className="text-sm text-center text-gray-600 mb-4">
-          {answers.q3 === 0 && 'まだ実感なし、来月チャレンジしてみよう🌱'}
-          {answers.q3 > 0 && answers.q3 <= 2 && '少しずつ効率化できてるね！'}
-          {answers.q3 > 2 && answers.q3 <= 5 && 'いい感じに使えてる👏'}
-          {answers.q3 > 5 && 'すごい！もう余裕でAI使いこなしてる🔥'}
-        </p>
-        <div className="flex justify-between">
-          <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
-          <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
-        </div>
-      </div>
-    );
-
-    const Q4Step = ({ answers, update, onNext, onBack }) => {
-      const choose = v => { update('q4', v); setTimeout(onNext, 200); };
+    const Q3Step = ({ answers, update, onNext, onBack }) => {
+      const pct = answers.q3 || 0;
+      const hours = (pct * 1.6).toFixed(1); // 月160h基準
       return (
         <div>
-          <h2 className="text-xl font-bold mb-1">Q4. 先月より自分はAI使えてる感じある？</h2>
-          <p className="text-sm text-gray-500 mb-6">直感でリアクション！</p>
-          <div className="grid grid-cols-4 gap-3">
-            {['😫','😐','😊','🔥'].map(e => (
-              <button
-                key={e}
-                onClick={() => choose(e)}
-                className={`p-6 rounded-2xl border-2 text-5xl transition ${answers.q4 === e ? 'border-indigo-500 bg-indigo-50 scale-110' : 'border-gray-200 hover:border-gray-400'}`}
-              >{e}</button>
-            ))}
+          <h2 className="text-xl font-bold mb-1">Q3. 今月、AIで業務効率化できた割合は？</h2>
+          <p className="text-sm text-gray-500 mb-6">体感でOK・スライダーで設定してね</p>
+          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 p-6 rounded-2xl mb-4">
+            <div className="text-center mb-4">
+              <div className="text-6xl font-bold text-indigo-600">{pct}<span className="text-3xl">%</span></div>
+              <div className="text-sm text-gray-500 mt-2">業務効率化</div>
+              {pct > 0 && (
+                <div className="mt-3 inline-block px-4 py-2 rounded-full bg-white border-2 border-indigo-200">
+                  <span className="text-xs text-gray-500">月160h想定で</span>{' '}
+                  <span className="text-lg font-bold text-purple-600">約{hours}時間</span>{' '}
+                  <span className="text-sm text-gray-600">削減！</span>
+                </div>
+              )}
+            </div>
+            <input
+              type="range"
+              min="0" max="100" step="5"
+              value={pct}
+              onChange={e => update('q3', parseInt(e.target.value))}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-gray-500 mt-2">
+              <span>0%</span><span>50%</span><span>100%</span>
+            </div>
           </div>
-          <p className="text-center text-xs text-gray-500 mt-4">後退 ← → 急成長</p>
-          <button onClick={onBack} className="mt-6 text-sm text-gray-500">← 戻る</button>
+          <p className="text-sm text-center text-gray-600 mb-4">
+            {pct === 0 && 'まだ実感なし、来月チャレンジしてみよう🌱'}
+            {pct > 0 && pct <= 15 && '少しずつ効率化できてるね！'}
+            {pct > 15 && pct <= 40 && 'いい感じに使えてる👏'}
+            {pct > 40 && pct <= 70 && 'かなりAIを使いこなしてる🔥'}
+            {pct > 70 && 'すごい！もう余裕でAI使いこなしてる⚡'}
+          </p>
+          <div className="flex justify-between">
+            <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+            <button onClick={onNext} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm">次へ →</button>
+          </div>
         </div>
       );
     };
 
-    const Q5Step = ({ answers, update, onNext, onBack }) => {
-      const choose = v => { update('q5', v); setTimeout(onNext, 200); };
+    const Q4Step = ({ answers, update, onNext, onBack }) => {
+      const opts = [
+        { e: '😫', label: '後退', detail: '先月より使えてない／むしろ離れた' },
+        { e: '😐', label: '変化なし', detail: '先月と同じくらい' },
+        { e: '😊', label: '少し成長', detail: '新しい使い方を1〜2個身につけた' },
+        { e: '🔥', label: '急成長', detail: '自分でも驚くくらい使いこなしてる' },
+      ];
+      const choose = v => update('q4', v);
       return (
         <div>
-          <h2 className="text-xl font-bold mb-1">Q5. 来月チャレンジしたいことは？</h2>
-          <p className="text-sm text-gray-500 mb-6">一つだけ選んで</p>
-          <div className="grid grid-cols-2 gap-3">
-            {cardChoice('プロンプト改善', answers.q5, choose, '✨', 'プロンプト改善')}
-            {cardChoice('新ツール試す', answers.q5, choose, '🆕', '新ツール試す')}
-            {cardChoice('チーム共有', answers.q5, choose, '🤝', 'チームに共有')}
-            {cardChoice('現状維持', answers.q5, choose, '🌿', '現状維持でいい')}
+          <h2 className="text-xl font-bold mb-1">Q4. 先月より自分はAI使えてる感じある？</h2>
+          <p className="text-sm text-gray-500 mb-6">マークごとの目安を見て、近い感覚を選んでね</p>
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {opts.map(o => (
+              <button
+                key={o.e}
+                onClick={() => choose(o.e)}
+                className={`p-3 rounded-2xl border-2 text-3xl transition ${answers.q4 === o.e ? 'border-indigo-500 bg-indigo-50 scale-105' : 'border-gray-200 hover:border-gray-400'}`}
+              >{o.e}</button>
+            ))}
           </div>
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            {opts.map(o => (
+              <div key={o.e} className={`text-center text-[10px] leading-tight transition ${answers.q4 === o.e ? 'text-indigo-700 font-bold' : 'text-gray-500'}`}>
+                <div className="font-medium">{o.label}</div>
+                <div className="mt-0.5">{o.detail}</div>
+              </div>
+            ))}
+          </div>
+          <label className="block">
+            <span className="text-xs text-gray-500">具体的なエピソードがあれば（任意）</span>
+            <textarea
+              value={answers.q4Note || ''}
+              onChange={e => update('q4Note', e.target.value)}
+              rows={2}
+              placeholder="例：プロンプト書き方を変えたら回答精度が上がった"
+              className="w-full p-2 border rounded-lg text-sm mt-1"
+            />
+          </label>
+          <div className="flex justify-between mt-6">
+            <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+            <button onClick={onNext} disabled={!answers.q4} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm disabled:opacity-40">次へ →</button>
+          </div>
+        </div>
+      );
+    };
+
+    const Q5Step = ({ answers, master, update, onNext, onBack }) => {
+      const choose = v => { update('q5', v); setTimeout(onNext, 200); };
+      const q5Opts = (master.q5Options || []).filter(o => o.active);
+      return (
+        <div>
+          <h2 className="text-xl font-bold mb-1">Q5. 来月の方向性は？</h2>
+          <p className="text-sm text-gray-500 mb-6">一つだけ選んで</p>
+          <div className={`grid gap-3 ${q5Opts.length <= 4 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>
+            {q5Opts.map(o => cardChoice(o.value, answers.q5, choose, o.emoji, o.label))}
+          </div>
+          {q5Opts.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-4">選択肢が未設定です（管理画面で設定してください）</p>
+          )}
           <button onClick={onBack} className="mt-6 text-sm text-gray-500">← 戻る</button>
         </div>
       );
     };
 
     const Q6Step = ({ answers, update, onNext, onBack }) => {
-      const choose = v => { update('q6', v); setTimeout(onNext, 200); };
+      const opts = [
+        { e: '😫', label: '独占中', detail: '誰にも話してない／聞かれてない' },
+        { e: '😐', label: 'チラ話', detail: '雑談レベルで個別にちょっと' },
+        { e: '😊', label: 'MTGで共有', detail: 'チームMTGでデモ・共有した' },
+        { e: '🔥', label: '展開リード', detail: 'ベスプラとして全社に広めてる' },
+      ];
+      const choose = v => update('q6', v);
       return (
         <div>
           <h2 className="text-xl font-bold mb-1">Q6. チームにAI活用を共有してる？</h2>
-          <p className="text-sm text-gray-500 mb-6">直感でリアクション！</p>
-          <div className="grid grid-cols-4 gap-3">
-            {['😫','😐','😊','🔥'].map(e => (
+          <p className="text-sm text-gray-500 mb-6">マークごとの目安を見て、近い感覚を選んでね</p>
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {opts.map(o => (
               <button
-                key={e}
-                onClick={() => choose(e)}
-                className={`p-6 rounded-2xl border-2 text-5xl transition ${answers.q6 === e ? 'border-indigo-500 bg-indigo-50 scale-110' : 'border-gray-200 hover:border-gray-400'}`}
-              >{e}</button>
+                key={o.e}
+                onClick={() => choose(o.e)}
+                className={`p-3 rounded-2xl border-2 text-3xl transition ${answers.q6 === o.e ? 'border-indigo-500 bg-indigo-50 scale-105' : 'border-gray-200 hover:border-gray-400'}`}
+              >{o.e}</button>
             ))}
           </div>
-          <p className="text-center text-xs text-gray-500 mt-4">独占中 ← → みんなに共有</p>
-          <button onClick={onBack} className="mt-6 text-sm text-gray-500">← 戻る</button>
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            {opts.map(o => (
+              <div key={o.e} className={`text-center text-[10px] leading-tight transition ${answers.q6 === o.e ? 'text-indigo-700 font-bold' : 'text-gray-500'}`}>
+                <div className="font-medium">{o.label}</div>
+                <div className="mt-0.5">{o.detail}</div>
+              </div>
+            ))}
+          </div>
+          <label className="block">
+            <span className="text-xs text-gray-500">具体的に何を共有したか（任意）</span>
+            <textarea
+              value={answers.q6Note || ''}
+              onChange={e => update('q6Note', e.target.value)}
+              rows={2}
+              placeholder="例：議事録自動化のテンプレを朝会で配った"
+              className="w-full p-2 border rounded-lg text-sm mt-1"
+            />
+          </label>
+          <div className="flex justify-between mt-6">
+            <button onClick={onBack} className="text-sm text-gray-500">← 戻る</button>
+            <button onClick={onNext} disabled={!answers.q6} className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm disabled:opacity-40">次へ →</button>
+          </div>
         </div>
       );
     };
@@ -835,43 +925,53 @@
     // ============ 回答結果画面 ============
     const SurveyResult = ({ result, aiComment, aiLoading, onComplete }) => {
       const { score, stage } = result;
+      const [displayScore, setDisplayScore] = useState(0);
+
+      // スコアカウントアップ（0→現在値、約2秒）
+      useEffect(() => {
+        const duration = 2000;
+        const startTime = Date.now();
+        const tick = () => {
+          const elapsed = Date.now() - startTime;
+          const progress = Math.min(1, elapsed / duration);
+          // easeOutQuart
+          const eased = 1 - Math.pow(1 - progress, 4);
+          setDisplayScore(Math.round(score * eased));
+          if (progress < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }, [score]);
+
       return (
         <div className="max-w-2xl mx-auto px-4 py-6">
-          <div className="bg-white rounded-2xl border p-6 text-center slide-in">
-            <h2 className="text-sm text-gray-500">今月のあなたのスコア</h2>
-            <div className="text-7xl font-bold my-3" style={{ color: stage.pixelColor }}>{score}</div>
-            <div className="text-sm text-gray-500 mb-6">/ 100pt</div>
-
-            <div className="flex justify-center mb-4">
-              <PixelCat stage={stage} size="lg" />
+          <div className="bg-white rounded-2xl border p-8 text-center slide-in">
+            <h2 className="text-sm text-gray-500 mb-2">🎉 今月のあなたのスコア</h2>
+            <div className="my-4 score-reveal">
+              <div className="text-8xl font-bold" style={{ color: stage.pixelColor }}>{displayScore}</div>
+              <div className="text-sm text-gray-500 mt-1">/ 100pt</div>
             </div>
-            <h3 className="text-xl font-bold mt-3">{stage.name}</h3>
 
-            <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-yellow-50 to-pink-50 border border-yellow-200">
+            <div className="flex justify-center my-6 cat-appear">
+              <div className="gentle-float">
+                <PixelCat stage={stage} size="lg" />
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold mt-3 cat-appear" style={{ color: stage.pixelColor }}>{stage.name}</h3>
+
+            <div className="mt-8 p-5 rounded-xl bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-50 border border-yellow-200 comment-fade">
+              <div className="text-xs text-gray-500 mb-2">🐱 にゃんこからのメッセージ</div>
               {aiLoading ? (
-                <div className="text-sm text-gray-500 typing">考え中にゃ</div>
+                <div className="text-sm text-gray-500 typing py-2">考え中にゃ</div>
               ) : (
-                <p className="text-sm whitespace-pre-wrap">{aiComment}</p>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{aiComment}</p>
               )}
             </div>
 
-            <div className="mt-8">
-              <h4 className="text-xs text-gray-500 mb-3">🐱 6段階成長マップ</h4>
-              <div className="flex justify-center items-end gap-1 overflow-x-auto pb-2">
-                {CAT_STAGES.map(s => (
-                  <div key={s.id} className="flex flex-col items-center" style={{ minWidth: 60 }}>
-                    <PixelCat stage={s} size="sm" highlight={s.id === stage.id} />
-                    <div className="text-xs mt-1 font-medium">{s.name}</div>
-                    <div className="text-[10px] text-gray-400">{s.minScore}-{s.maxScore}</div>
-                    {s.id === stage.id && <div className="text-[10px] text-indigo-600 font-bold mt-1">👇 今ここ</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <p className="mt-6 text-xs text-gray-400 comment-fade">じっくり眺めてからダッシュボードへどうぞ🌿</p>
 
             <button
               onClick={onComplete}
-              className="mt-8 px-6 py-3 rounded-lg bg-gray-900 text-white font-medium"
+              className="mt-4 px-6 py-3 rounded-lg bg-gray-900 text-white font-medium hover:bg-gray-700 comment-fade"
             >ダッシュボードへ →</button>
           </div>
         </div>
@@ -890,6 +990,7 @@
           <div className="flex gap-2 mb-4 overflow-x-auto">
             {[
               ['initiatives','施策リスト'],
+              ['q5options','Q5選択肢'],
               ['settings','設定'],
               ['webhook','Webhook URL'],
             ].map(([k, l]) => (
@@ -902,9 +1003,71 @@
           </div>
 
           {tab === 'initiatives' && <InitiativesTab master={master} setMaster={setMaster} />}
+          {tab === 'q5options' && <Q5OptionsTab master={master} setMaster={setMaster} />}
           {tab === 'settings' && <SettingsTab master={master} setMaster={setMaster} />}
           {tab === 'webhook' && <WebhookTab webhookUrl={webhookUrl} setWebhookUrl={setWebhookUrl} />}
         </div>
+      );
+    };
+
+    const Q5OptionsTab = ({ master, setMaster }) => {
+      const [value, setValue] = useState('');
+      const [emoji, setEmoji] = useState('');
+      const [label, setLabel] = useState('');
+      const [score, setScore] = useState(10);
+
+      const add = () => {
+        if (!value) return;
+        const newOpt = { value, emoji: emoji || '✨', label: label || value, score: parseInt(score) || 0, active: true };
+        setMaster(prev => ({ ...prev, q5Options: [...(prev.q5Options || []), newOpt] }));
+        setValue(''); setEmoji(''); setLabel(''); setScore(10);
+      };
+      const toggle = v => setMaster(prev => ({ ...prev, q5Options: (prev.q5Options || []).map(o => o.value === v ? { ...o, active: !o.active } : o) }));
+      const remove = v => { if (confirm('削除しますか？')) setMaster(prev => ({ ...prev, q5Options: (prev.q5Options || []).filter(o => o.value !== v) })); };
+      const editScore = (v, s) => setMaster(prev => ({ ...prev, q5Options: (prev.q5Options || []).map(o => o.value === v ? { ...o, score: s } : o) }));
+
+      const opts = master.q5Options || [];
+
+      return (
+        <Card title="🎯 Q5「来月の方向性」選択肢">
+          <p className="text-xs text-gray-500 mb-3">アンケートQ5の選択肢を管理。スコア配分も変更可能（推奨：前向きな選択肢=10pt、現状維持=3pt）。</p>
+          <div className="space-y-2 mb-4">
+            {opts.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-3">選択肢が未登録です。下から追加してください。</p>
+            ) : opts.map(o => (
+              <div key={o.value} className={`p-3 rounded-lg border flex items-center justify-between gap-3 ${o.active ? 'bg-white' : 'bg-gray-50 opacity-60'}`}>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="text-2xl flex-shrink-0">{o.emoji}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{o.value}</div>
+                    <div className="text-xs text-gray-500 truncate">{o.label}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <input
+                    type="number"
+                    value={o.score}
+                    onChange={e => editScore(o.value, parseInt(e.target.value) || 0)}
+                    className="w-14 px-2 py-1 border rounded text-xs text-right"
+                  />
+                  <span className="text-xs text-gray-500">pt</span>
+                  <button onClick={() => toggle(o.value)} className="text-xs px-2 py-1 rounded bg-gray-100">{o.active ? '無効化' : '有効化'}</button>
+                  <button onClick={() => remove(o.value)} className="text-xs px-2 py-1 rounded bg-red-50 text-red-600">削除</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="border-t pt-4">
+            <h4 className="text-sm font-bold mb-2">＋ 新しい選択肢を追加</h4>
+            <div className="grid grid-cols-12 gap-2">
+              <input type="text" placeholder="値（例：プロンプト改善）" value={value} onChange={e => setValue(e.target.value)} className="col-span-4 p-2 border rounded text-sm" />
+              <input type="text" placeholder="絵文字" value={emoji} onChange={e => setEmoji(e.target.value)} maxLength={3} className="col-span-2 p-2 border rounded text-sm text-center" />
+              <input type="text" placeholder="ラベル（任意・空欄で値と同じ）" value={label} onChange={e => setLabel(e.target.value)} className="col-span-4 p-2 border rounded text-sm" />
+              <input type="number" placeholder="pt" value={score} onChange={e => setScore(e.target.value)} className="col-span-2 p-2 border rounded text-sm text-right" />
+            </div>
+            <button onClick={add} disabled={!value} className="mt-3 px-4 py-2 rounded bg-gray-900 text-white text-sm disabled:opacity-50">追加</button>
+          </div>
+        </Card>
       );
     };
 
@@ -991,6 +1154,11 @@
     const ExecDashboard = ({ master, responses, webhookUrl, onLogout }) => {
       const [aiAnalysis, setAiAnalysis] = useState('');
       const [aiLoading, setAiLoading] = useState(false);
+      const [digestText, setDigestText] = useState('');
+      const [digestLoading, setDigestLoading] = useState(false);
+      const [slackSending, setSlackSending] = useState(false);
+      const [pdfGenerating, setPdfGenerating] = useState(false);
+      const slideRef = useRef(null);
 
       const currentMonth = '2026-05';
       const lastMonth = '2026-04';
@@ -999,8 +1167,11 @@
 
       const totalCount = master.names.filter(n => n.active).length;
       const respRate = totalCount ? Math.round(thisM.length / totalCount * 100) : 0;
-      const totalSaved = thisM.reduce((s, r) => s + (r.q3 || 0), 0);
-      const lastSaved = lastM.reduce((s, r) => s + (r.q3 || 0), 0);
+      // q3は業務効率化%（0-100）。月160h想定で時間換算
+      const PCT_TO_HOURS = 1.6;
+      const totalSaved = thisM.reduce((s, r) => s + (r.q3 || 0) * PCT_TO_HOURS, 0);
+      const lastSaved = lastM.reduce((s, r) => s + (r.q3 || 0) * PCT_TO_HOURS, 0);
+      const avgPct = thisM.length ? Math.round(thisM.reduce((s, r) => s + (r.q3 || 0), 0) / thisM.length) : 0;
       const heavyCount = thisM.filter(r => r.q1 === 'ほぼ毎日').length;
       const heavyRate = thisM.length ? Math.round(heavyCount / thisM.length * 100) : 0;
       const didableCount = thisM.filter(r => r.didable && r.didable.length > 5).length;
@@ -1011,10 +1182,10 @@
       const yearlySaving = monthlySaving * 12;
       const roi = aiCost > 0 ? Math.round((monthlySaving - aiCost) / aiCost * 100) : 0;
 
-      // 部署別
+      // 部署別（q3=% → ×1.6で時間換算）
       const deptStats = master.departments.map(d => {
         const m = thisM.filter(r => r.department === d);
-        const saved = m.reduce((s,r) => s + (r.q3 || 0), 0);
+        const saved = m.reduce((s,r) => s + (r.q3 || 0) * PCT_TO_HOURS, 0);
         const cost = saved * hourlyRate;
         const did = m.filter(r => r.didable && r.didable.length > 5).length;
         return { dept: d, count: m.length, saved, cost, did };
@@ -1054,22 +1225,93 @@ Webhook URL未設定のため、これはサンプル文です。`);
         setAiLoading(false);
       };
 
+      const generateDigest = async () => {
+        const summaryFallback = `🐱 AI Pulse 月次ダイジェスト（${currentMonth}）
+
+📊 主要KPI
+・合計時短時間：${totalSaved.toFixed(1)}h（先月比 ${totalSaved - lastSaved > 0 ? '+' : ''}${(totalSaved - lastSaved).toFixed(1)}h）
+・月間コスト削減：¥${monthlySaving.toLocaleString()}（ROI ${roi > 0 ? '+' : ''}${roi}%）
+・回答率：${respRate}%（${thisM.length}/${totalCount}名）
+・ヘビーユーザー率：${heavyRate}%
+
+🏆 部署別トップ3
+${deptStats.sort((a,b) => b.saved - a.saved).slice(0,3).map((d,i) => `${i+1}. ${d.dept}：${d.saved.toFixed(1)}h（${d.count}名）`).join('\n')}
+
+💡 主な「できるようになったこと」
+${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
+
+📎 詳細はダッシュボード参照：${location.origin}${location.pathname}
+（AI Pulse / KONNEKT INTERNATIONAL）`;
+
+        if (!webhookUrl) {
+          setDigestText(summaryFallback);
+          return;
+        }
+        setDigestLoading(true);
+        try {
+          const res = await callGas(webhookUrl, 'generate_monthly_digest', {
+            currentMonth, totalSaved, lastSaved, monthlySaving, roi, respRate, heavyRate,
+            deptStats, initStats, voices, totalCount, responseCount: thisM.length
+          });
+          setDigestText(res.digest || summaryFallback);
+        } catch (e) {
+          setDigestText(summaryFallback);
+        }
+        setDigestLoading(false);
+      };
+
+      const downloadPdf = () => {
+        if (!slideRef.current) return;
+        setPdfGenerating(true);
+        const opt = {
+          margin: 5,
+          filename: `AI_Pulse_${currentMonth}.pdf`,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+        window.html2pdf().set(opt).from(slideRef.current).save().then(() => setPdfGenerating(false));
+      };
+
+      const sendToSlack = async () => {
+        if (!digestText) { alert('まずダイジェスト本文を生成してください'); return; }
+        if (!webhookUrl) { alert('Webhook URL未設定です'); return; }
+        if (!confirm('経営層（ゆうさん・小柳さん・引地さん）にSlack DMで送信します。よろしいですか？')) return;
+        setSlackSending(true);
+        try {
+          const res = await callGas(webhookUrl, 'send_to_slack', { message: digestText });
+          if (res.ok) alert(`Slack配信完了！\n送信先：${res.sentTo?.join(', ') || '配信先'}`);
+          else throw new Error(res.error || '不明なエラー');
+        } catch (e) {
+          alert(`配信失敗：${e.message}\n（Slack Bot Token・SLACK_RECIPIENTS設定を確認してください）`);
+        }
+        setSlackSending(false);
+      };
+
       return (
         <div className="bg-gray-50 min-h-screen">
           <div className="max-w-[1600px] mx-auto p-4">
-            <div className="flex justify-between items-center mb-4 print:hidden">
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-4 print:hidden">
               <h2 className="text-xl font-bold">🔒 経営層ダッシュボード（{currentMonth}）</h2>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button onClick={generateAi} disabled={aiLoading} className="px-3 py-2 rounded bg-indigo-600 text-white text-sm disabled:opacity-50">
-                  {aiLoading ? '生成中...' : '🤖 AI分析を生成'}
+                  {aiLoading ? '生成中...' : '🤖 AI分析'}
                 </button>
-                <button onClick={() => window.print()} className="px-3 py-2 rounded bg-gray-700 text-white text-sm">🖨 印刷</button>
+                <button onClick={generateDigest} disabled={digestLoading} className="px-3 py-2 rounded bg-purple-600 text-white text-sm disabled:opacity-50">
+                  {digestLoading ? '生成中...' : '📄 ダイジェスト生成'}
+                </button>
+                <button onClick={downloadPdf} disabled={pdfGenerating} className="px-3 py-2 rounded bg-rose-600 text-white text-sm disabled:opacity-50">
+                  {pdfGenerating ? '書き出し中...' : '⬇️ PDF'}
+                </button>
+                <button onClick={sendToSlack} disabled={slackSending || !digestText} className="px-3 py-2 rounded bg-emerald-600 text-white text-sm disabled:opacity-50">
+                  {slackSending ? '送信中...' : '💬 Slack配信'}
+                </button>
                 <button onClick={onLogout} className="px-3 py-2 rounded bg-gray-200 text-sm">ログアウト</button>
               </div>
             </div>
 
             {/* 16:9 横長スライド領域 */}
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '600px' }}>
+            <div ref={slideRef} className="bg-white rounded-2xl shadow-lg overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '600px' }}>
               <div className="p-8 h-full grid grid-cols-12 grid-rows-6 gap-4">
                 {/* ROIバナー（最上段） */}
                 <div className="col-span-12 row-span-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl p-4 flex items-center justify-around">
@@ -1201,6 +1443,248 @@ Webhook URL未設定のため、これはサンプル文です。`);
                 </div>
               </div>
             </div>
+
+            {/* ダイジェスト本文プレビュー（Slack配信用・PDFには含まれない） */}
+            {digestText && (
+              <div className="mt-6 bg-white rounded-2xl border shadow-sm p-5 print:hidden">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="font-bold text-sm">📨 Slack配信用ダイジェスト本文</h3>
+                    <p className="text-xs text-gray-500 mt-1">経営層DM（ゆうさん・小柳さん・引地さん）にこの本文が届きます</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(digestText); alert('コピーしました'); }}
+                      className="px-3 py-1.5 rounded bg-gray-100 text-xs hover:bg-gray-200"
+                    >📋 コピー</button>
+                    <button
+                      onClick={() => setDigestText('')}
+                      className="px-3 py-1.5 rounded bg-gray-100 text-xs hover:bg-gray-200"
+                    >✕ 閉じる</button>
+                  </div>
+                </div>
+                <textarea
+                  value={digestText}
+                  onChange={e => setDigestText(e.target.value)}
+                  rows={14}
+                  className="w-full p-3 border rounded-lg text-sm font-mono whitespace-pre-wrap"
+                />
+                <p className="text-xs text-gray-400 mt-2">※ 本文は手動編集できます。「💬 Slack配信」を押すと、ここに表示されている内容が送信されます。</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // ============ マイページ ============
+    const MyPage = ({ user, responses, master, onLogout }) => {
+      const myResponses = responses
+        .filter(r => r.name === user.name)
+        .sort((a, b) => a.month.localeCompare(b.month));
+      const latest = myResponses[myResponses.length - 1];
+      const latestStage = latest ? getCatStage(latest.score) : CAT_STAGES[0];
+      const bestScore = myResponses.length ? Math.max(...myResponses.map(r => r.score)) : 0;
+      const bestStage = getCatStage(bestScore);
+      const avgScore = myResponses.length ? Math.round(myResponses.reduce((s,r) => s + r.score, 0) / myResponses.length) : 0;
+
+      // スコア推移グラフ用
+      const trend = myResponses.map(r => ({
+        month: r.month.slice(5),
+        score: r.score
+      }));
+
+      // キャラ成長履歴（重複しないステージのみ）
+      const stageHistory = [];
+      myResponses.forEach(r => {
+        const st = getCatStage(r.score);
+        if (!stageHistory.some(h => h.id === st.id)) {
+          stageHistory.push({ ...st, firstReachedAt: r.month });
+        }
+      });
+
+      return (
+        <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">👤 マイページ</h2>
+              <p className="text-sm text-gray-500 mt-1">{user.name}（{user.department}）</p>
+            </div>
+            <button onClick={onLogout} className="text-sm text-gray-500 hover:text-gray-800">ログアウト</button>
+          </div>
+
+          {/* 現在のキャラ + ベスト */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card title="🐱 いまの相棒にゃんこ">
+              <div className="text-center">
+                {latest ? (
+                  <>
+                    <div className="flex justify-center mb-2">
+                      <PixelCat stage={latestStage} size="lg" />
+                    </div>
+                    <div className="font-bold mt-2" style={{ color: latestStage.pixelColor }}>{latestStage.name}</div>
+                    <div className="text-xs text-gray-500 mt-1">最新スコア {latest.score}pt（{latest.month}）</div>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400 py-8">まだ回答がないにゃ〜</p>
+                )}
+              </div>
+            </Card>
+
+            <Card title="🏆 ベストスコア">
+              <div className="text-center py-4">
+                <div className="text-5xl font-bold text-amber-500">{bestScore}</div>
+                <div className="text-xs text-gray-500 mt-1">/100pt</div>
+                {bestScore > 0 && (
+                  <div className="mt-3">
+                    <div className="text-xs font-medium" style={{ color: bestStage.pixelColor }}>到達ステージ：{bestStage.name}</div>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            <Card title="📊 平均スコア">
+              <div className="text-center py-4">
+                <div className="text-5xl font-bold text-indigo-500">{avgScore}</div>
+                <div className="text-xs text-gray-500 mt-1">過去{myResponses.length}回の平均</div>
+              </div>
+            </Card>
+          </div>
+
+          {/* スコア推移 */}
+          {trend.length > 1 && (
+            <Card title="📈 あなたのスコア推移">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={trend}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                  <XAxis dataKey="month" />
+                  <YAxis domain={[0,100]} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="score" stroke="#a855f7" strokeWidth={3} dot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          {/* キャラ成長履歴 */}
+          {stageHistory.length > 0 && (
+            <Card title="🌱 キャラ成長の足あと">
+              <div className="flex flex-wrap gap-3 justify-center">
+                {stageHistory.map(s => (
+                  <div key={s.id} className="text-center" style={{ minWidth: 80 }}>
+                    <PixelCat stage={s} size="sm" />
+                    <div className="text-xs font-medium mt-1">{s.name}</div>
+                    <div className="text-[10px] text-gray-400">{s.firstReachedAt}〜</div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 text-center mt-3">いまの相棒は {latestStage.name}🎉</p>
+            </Card>
+          )}
+
+          {/* 過去の回答一覧 */}
+          <Card title="📝 過去の回答">
+            {myResponses.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">まだ回答がないにゃ〜</p>
+            ) : (
+              <div className="space-y-2">
+                {[...myResponses].reverse().map((r, i) => {
+                  const st = getCatStage(r.score);
+                  return (
+                    <details key={i} className="rounded-lg border bg-gray-50 hover:bg-white transition">
+                      <summary className="p-3 cursor-pointer flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-500">{r.month}</span>
+                          <span className="text-sm font-bold" style={{ color: st.pixelColor }}>{st.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-indigo-600">{r.score}pt</span>
+                        </div>
+                      </summary>
+                      <div className="px-3 pb-3 text-xs space-y-1 border-t">
+                        <div><span className="text-gray-500">使用頻度：</span>{r.q1}</div>
+                        <div><span className="text-gray-500">効率化％：</span>{r.q3}%（約{(r.q3 * 1.6).toFixed(1)}h削減）</div>
+                        <div><span className="text-gray-500">成長実感：</span>{r.q4}</div>
+                        <div><span className="text-gray-500">来月の方向：</span>{r.q5}</div>
+                        {r.q7 && <div><span className="text-gray-500">ベスプラ：</span>{r.q7}</div>}
+                        {r.didable && <div><span className="text-gray-500">できたこと：</span>{r.didable}</div>}
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
+      );
+    };
+
+    // ============ マイページログインモーダル ============
+    const MyPageLoginModal = ({ master, onSubmit, onCancel }) => {
+      const [step, setStep] = useState(1);
+      const [name, setName] = useState('');
+      const [pin, setPin] = useState('');
+      const [error, setError] = useState('');
+
+      const handleSubmit = () => {
+        const user = master.names.find(n => n.name === name);
+        if (!user) { setError('名前が見つかりません'); return; }
+        if (String(user.pin || '1111') !== pin) { setError('PINが違います'); return; }
+        onSubmit(user);
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm slide-in">
+            <h3 className="text-lg font-bold mb-1">👤 マイページにログイン</h3>
+            <p className="text-sm text-gray-500 mb-4">自分の回答履歴を見るためにログインしてね</p>
+
+            {step === 1 && (
+              <>
+                <label className="text-xs text-gray-600 block mb-1">あなたの名前</label>
+                <select
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full p-3 border rounded-lg mb-4"
+                >
+                  <option value="">— 選択 —</option>
+                  {master.names.filter(n => n.active).map(n => (
+                    <option key={n.name} value={n.name}>{n.name}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button onClick={onCancel} className="flex-1 py-2 rounded bg-gray-100 text-sm">キャンセル</button>
+                  <button
+                    onClick={() => name && setStep(2)}
+                    disabled={!name}
+                    className="flex-1 py-2 rounded bg-gray-900 text-white text-sm disabled:opacity-50"
+                  >次へ →</button>
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <label className="text-xs text-gray-600 block mb-1">PIN（4桁数字）</label>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pin}
+                  onChange={e => { setPin(e.target.value.replace(/[^0-9]/g, '')); setError(''); }}
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                  placeholder="••••"
+                  className="w-full p-3 border rounded-lg mb-2 text-center text-2xl tracking-widest font-mono"
+                  autoFocus
+                />
+                {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+                <p className="text-xs text-gray-400 mb-4">初期PINは「1111」だよ。忘れたらゆりこさんに連絡してね</p>
+                <div className="flex gap-2">
+                  <button onClick={() => { setStep(1); setPin(''); setError(''); }} className="flex-1 py-2 rounded bg-gray-100 text-sm">← 戻る</button>
+                  <button onClick={handleSubmit} disabled={pin.length < 4} className="flex-1 py-2 rounded bg-gray-900 text-white text-sm disabled:opacity-50">ログイン</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       );
@@ -1237,9 +1721,10 @@ Webhook URL未設定のため、これはサンプル文です。`);
       const [master, setMaster] = useState(SAMPLE_MASTER);
       const [responses, setResponses] = useState(SAMPLE_RESPONSES);
       const [webhookUrl, setWebhookUrl] = useState('');
-      const [loginMode, setLoginMode] = useState(null); // 'admin' | 'exec' | null
+      const [loginMode, setLoginMode] = useState(null); // 'admin' | 'exec' | 'mypage' | null
       const [adminAuth, setAdminAuth] = useState(false);
       const [execAuth, setExecAuth] = useState(false);
+      const [currentUser, setCurrentUser] = useState(null); // マイページのログインユーザー
 
       // 初期ロード（localStorageからwebhookUrl復元・GAS取得）
       useEffect(() => {
@@ -1292,12 +1777,22 @@ Webhook URL未設定のため、これはサンプル文です。`);
           <Header
             currentView={view}
             setView={setView}
+            currentUser={currentUser}
             onAdmin={() => adminAuth ? setView('admin') : setLoginMode('admin')}
             onExec={() => execAuth ? setView('exec') : setLoginMode('exec')}
+            onMyPage={() => currentUser ? setView('mypage') : setLoginMode('mypage')}
           />
 
           {view === 'dashboard' && <PublicDashboard responses={responses} master={master} />}
           {view === 'survey' && <Survey master={master} webhookUrl={webhookUrl} onComplete={() => setView('dashboard')} />}
+          {view === 'mypage' && currentUser && (
+            <MyPage
+              user={currentUser}
+              responses={responses}
+              master={master}
+              onLogout={() => { setCurrentUser(null); setView('dashboard'); }}
+            />
+          )}
           {view === 'admin' && adminAuth && (
             <AdminPanel
               master={master}
@@ -1318,6 +1813,13 @@ Webhook URL未設定のため、これはサンプル文です。`);
 
           {loginMode === 'admin' && <LoginModal title="管理画面ログイン" onSubmit={handleAdminLogin} onCancel={() => setLoginMode(null)} />}
           {loginMode === 'exec' && <LoginModal title="経営層ダッシュボード" onSubmit={handleExecLogin} onCancel={() => setLoginMode(null)} />}
+          {loginMode === 'mypage' && (
+            <MyPageLoginModal
+              master={master}
+              onSubmit={(user) => { setCurrentUser(user); setLoginMode(null); setView('mypage'); }}
+              onCancel={() => setLoginMode(null)}
+            />
+          )}
 
           {!webhookUrl && (
             <div className="fixed bottom-4 right-4 bg-yellow-100 border border-yellow-300 rounded-lg p-3 text-xs max-w-xs shadow-lg print:hidden">
