@@ -1249,10 +1249,31 @@
       const [pdfGenerating, setPdfGenerating] = useState(false);
       const slideRef = useRef(null);
 
-      const currentMonth = '2026-05';
-      const lastMonth = '2026-04';
-      const thisM = responses.filter(r => r.month === currentMonth);
-      const lastM = responses.filter(r => r.month === lastMonth);
+      // 表示月セレクター（過去データも見れる）
+      const availableMonths = useMemo(() => {
+        const ms = [...new Set((responses || []).map(r => r.month))].filter(Boolean).sort();
+        // 今月も常に選べるようにする
+        const now = new Date().toISOString().slice(0, 7);
+        if (!ms.includes(now)) ms.push(now);
+        return ms.sort();
+      }, [responses]);
+      const [viewMonth, setViewMonth] = useState(() => availableMonths[availableMonths.length - 1] || '2026-05');
+      const prevMonth = useMemo(() => {
+        const d = new Date(viewMonth + '-01');
+        d.setMonth(d.getMonth() - 1);
+        return d.toISOString().slice(0, 7);
+      }, [viewMonth]);
+
+      // 月切り替え時にAI分析・ダイジェストはリセット
+      useEffect(() => {
+        setAiAnalysis('');
+        setDigestText('');
+      }, [viewMonth]);
+
+      const currentMonth = viewMonth;
+      const lastMonth = prevMonth;
+      const thisM = responses.filter(r => r.month === viewMonth);
+      const lastM = responses.filter(r => r.month === prevMonth);
 
       const totalCount = master.names.filter(n => n.active).length;
       const respRate = totalCount ? Math.round(thisM.length / totalCount * 100) : 0;
@@ -1381,7 +1402,36 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
         <div className="bg-gray-50 min-h-screen">
           <div className="max-w-[1600px] mx-auto p-4">
             <div className="flex flex-wrap justify-between items-center gap-2 mb-4 print:hidden">
-              <h2 className="text-xl font-bold">🔒 経営層ダッシュボード（{currentMonth}）</h2>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-xl font-bold">🔒 経営層ダッシュボード</h2>
+                <div className="flex items-center gap-1 bg-white border rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => {
+                      const idx = availableMonths.indexOf(viewMonth);
+                      if (idx > 0) setViewMonth(availableMonths[idx - 1]);
+                    }}
+                    disabled={availableMonths.indexOf(viewMonth) <= 0}
+                    className="px-2 py-1.5 text-sm hover:bg-gray-100 disabled:opacity-30"
+                  >←</button>
+                  <select
+                    value={viewMonth}
+                    onChange={e => setViewMonth(e.target.value)}
+                    className="px-2 py-1.5 text-sm border-l border-r bg-white"
+                  >
+                    {availableMonths.map(m => (
+                      <option key={m} value={m}>{m.replace('-', '年')}月</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => {
+                      const idx = availableMonths.indexOf(viewMonth);
+                      if (idx < availableMonths.length - 1) setViewMonth(availableMonths[idx + 1]);
+                    }}
+                    disabled={availableMonths.indexOf(viewMonth) >= availableMonths.length - 1}
+                    className="px-2 py-1.5 text-sm hover:bg-gray-100 disabled:opacity-30"
+                  >→</button>
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <button onClick={generateAi} disabled={aiLoading} className="px-3 py-2 rounded bg-indigo-600 text-white text-sm disabled:opacity-50">
                   {aiLoading ? '生成中...' : '🤖 AI分析'}
