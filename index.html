@@ -591,8 +591,15 @@
             name: answers.name,
             currentAnswers: payload
           })
-            .then(res => setRecommendation(res.recommendation || ''))
-            .catch(() => setRecommendation('来月もこの調子で続けてみるにゃ！新しい使い方も1つ試してみてね💡'))
+            .then(res => {
+              const rec = (res?.recommendation || '').trim();
+              if (rec) {
+                setRecommendation(rec);
+              } else {
+                setRecommendation('💡 来月のおすすめ\n今月の使い方をベースに、新しい場面でも1つAI試してみない？\n小さな積み重ねが累積XPを伸ばすコツだにゃ✨');
+              }
+            })
+            .catch(() => setRecommendation('💡 来月のおすすめ\n来月もこの調子で続けてみるにゃ！\n新しい使い方も1つ試してみてね'))
             .finally(() => setRecLoading(false));
         } else {
           setAiComment(stage.message);
@@ -1774,8 +1781,88 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
       );
     };
 
+    // ============ PIN変更モーダル ============
+    const PinChangeModal = ({ user, webhookUrl, onClose, onSuccess }) => {
+      const [oldPin, setOldPin] = useState('');
+      const [newPin, setNewPin] = useState('');
+      const [confirmPin, setConfirmPin] = useState('');
+      const [error, setError] = useState('');
+      const [submitting, setSubmitting] = useState(false);
+
+      const submit = async () => {
+        if (!/^\d{4}$/.test(newPin)) { setError('新PINは4桁の数字で'); return; }
+        if (newPin !== confirmPin) { setError('新PINが一致しません'); return; }
+        setSubmitting(true);
+        try {
+          if (webhookUrl) {
+            const res = await callGas(webhookUrl, 'update_pin', { name: user.name, oldPin, newPin });
+            if (!res.ok) throw new Error(res.error || '更新失敗');
+          }
+          onSuccess(newPin);
+        } catch (e) {
+          setError('更新失敗：' + (e.message || ''));
+        }
+        setSubmitting(false);
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm slide-in">
+            <h3 className="text-lg font-bold mb-1">🔐 PIN変更</h3>
+            <p className="text-sm text-gray-500 mb-4">{user.name}さんの新しいPINを設定</p>
+
+            <label className="block mb-3">
+              <span className="text-xs text-gray-600">現在のPIN</span>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={oldPin}
+                onChange={e => { setOldPin(e.target.value.replace(/[^0-9]/g, '')); setError(''); }}
+                placeholder="••••"
+                className="w-full p-2 border rounded-lg mt-1 text-center text-xl tracking-widest font-mono"
+              />
+            </label>
+            <label className="block mb-3">
+              <span className="text-xs text-gray-600">新しいPIN（4桁）</span>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={newPin}
+                onChange={e => { setNewPin(e.target.value.replace(/[^0-9]/g, '')); setError(''); }}
+                placeholder="••••"
+                className="w-full p-2 border rounded-lg mt-1 text-center text-xl tracking-widest font-mono"
+              />
+            </label>
+            <label className="block mb-3">
+              <span className="text-xs text-gray-600">新しいPIN（確認）</span>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={confirmPin}
+                onChange={e => { setConfirmPin(e.target.value.replace(/[^0-9]/g, '')); setError(''); }}
+                placeholder="••••"
+                className="w-full p-2 border rounded-lg mt-1 text-center text-xl tracking-widest font-mono"
+              />
+            </label>
+            {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+            <div className="flex gap-2 mt-4">
+              <button onClick={onClose} className="flex-1 py-2 rounded bg-gray-100 text-sm">キャンセル</button>
+              <button onClick={submit} disabled={submitting || newPin.length < 4 || confirmPin.length < 4} className="flex-1 py-2 rounded bg-gray-900 text-white text-sm disabled:opacity-50">
+                {submitting ? '更新中...' : '変更する'}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
     // ============ マイページ ============
-    const MyPage = ({ user, responses, master, onLogout }) => {
+    const MyPage = ({ user, responses, master, webhookUrl, onLogout }) => {
+      const [pinModalOpen, setPinModalOpen] = useState(false);
+      const [pinSuccess, setPinSuccess] = useState(false);
       const myResponses = responses
         .filter(r => r.name === user.name)
         .sort((a, b) => a.month.localeCompare(b.month));
@@ -1813,13 +1900,33 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
 
       return (
         <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h2 className="text-2xl font-bold">👤 マイページ</h2>
               <p className="text-sm text-gray-500 mt-1">{user.name}（{user.department}）</p>
             </div>
-            <button onClick={onLogout} className="text-sm text-gray-500 hover:text-gray-800">ログアウト</button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPinModalOpen(true)} className="text-xs px-3 py-1.5 rounded bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200">🔐 PIN変更</button>
+              <button onClick={onLogout} className="text-sm text-gray-500 hover:text-gray-800">ログアウト</button>
+            </div>
           </div>
+          {pinSuccess && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-700">
+              ✅ PINを変更しました
+            </div>
+          )}
+          {pinModalOpen && (
+            <PinChangeModal
+              user={user}
+              webhookUrl={webhookUrl}
+              onClose={() => setPinModalOpen(false)}
+              onSuccess={(newPin) => {
+                setPinModalOpen(false);
+                setPinSuccess(true);
+                setTimeout(() => setPinSuccess(false), 3000);
+              }}
+            />
+          )}
 
           {/* 累積XPバー（メインビジュアル・次のキャラ名はネタバレ防止で非表示） */}
           <Card title="🐱 いまの相棒にゃんこ">
@@ -2121,6 +2228,7 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
               user={currentUser}
               responses={responses}
               master={master}
+              webhookUrl={webhookUrl}
               onLogout={() => { setCurrentUser(null); setView('dashboard'); }}
             />
           )}

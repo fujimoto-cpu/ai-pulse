@@ -42,6 +42,7 @@ function doPost(e) {
     if (action === 'generate_monthly_digest') return jsonOut(generateMonthlyDigest(data));
     if (action === 'send_to_slack') return jsonOut(sendToSlack(data));
     if (action === 'update_master') return jsonOut(updateMaster(data));
+    if (action === 'update_pin') return jsonOut(updatePin(data));
     return jsonOut({ error: 'unknown action: ' + action });
   } catch (err) {
     return jsonOut({ error: err.message, stack: err.stack });
@@ -535,6 +536,31 @@ function monthlyAutoDigest() {
     Logger.log('monthlyAutoDigest error: ' + e.message);
     throw e;
   }
+}
+
+// ============ PIN更新（マイページから個人で変更） ============
+function updatePin(data) {
+  const { name, oldPin, newPin } = data;
+  if (!name || !newPin) throw new Error('名前と新PINが必要です');
+  if (!/^\d{4}$/.test(String(newPin))) throw new Error('新PINは4桁の数字で');
+
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName('名簿');
+  if (!sheet) throw new Error('名簿タブが見つかりません');
+
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === name) {
+      // 旧PIN照合（指定があれば）
+      if (oldPin && String(rows[i][4] || '1111') !== String(oldPin)) {
+        throw new Error('現在のPINが違います');
+      }
+      // E列（5列目）にnewPinを書き込み
+      sheet.getRange(i + 1, 5).setValue(String(newPin));
+      return { ok: true, name };
+    }
+  }
+  throw new Error('名前が見つかりません: ' + name);
 }
 
 // ============ マスター更新 ============
