@@ -37,6 +37,7 @@ function doPost(e) {
     const action = data.action;
     if (action === 'submit_response') return jsonOut(submitResponse(data));
     if (action === 'generate_cat_comment') return jsonOut(generateCatComment(data));
+    if (action === 'generate_recommendation') return jsonOut(generateRecommendation(data));
     if (action === 'generate_exec_analysis') return jsonOut(generateExecAnalysis(data));
     if (action === 'generate_monthly_digest') return jsonOut(generateMonthlyDigest(data));
     if (action === 'send_to_slack') return jsonOut(sendToSlack(data));
@@ -227,6 +228,69 @@ ${lastEntry ? `(${lastEntry.month}) ${summarize(lastEntry)}` : '初回の回答�
 
   const comment = callGemini(prompt, 500);
   return { comment };
+}
+
+// ============ 個別レコメンド生成（次の一歩） ============
+function generateRecommendation(data) {
+  const { name, currentAnswers } = data;
+  if (!GEMINI_API_KEY) {
+    return { recommendation: '来月もこの調子で続けてみるにゃ！新しい使い方も1つ試してみてね💡' };
+  }
+
+  // 個人の過去回答全部取得（昇順）
+  const dashboard = getDashboard();
+  const myHist = dashboard.responses
+    .filter(r => r.name === name)
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  // 社内アクティブ施策
+  const master = getMaster();
+  const activeInitiatives = (master.initiatives || []).filter(i => i.active);
+
+  const cur = currentAnswers || {};
+
+  // 履歴サマリー
+  const histSummary = myHist.slice(-6).map(r =>
+    `${r.month}: 頻度=${r.q1 || '-'}/効率化=${r.q3 || 0}%/場面=${(r.q2 || []).join(',') || '-'}/できた=${(r.didableTags || []).join(',') || '-'}`
+  ).join('\n');
+
+  const prompt = `あなたはKONNEKT INTERNATIONALのAI推進アシスタントです。
+${name}さんの活用パターンから、来月試すべき具体的アクションを1つ提案してください。
+
+【今月の状況】
+- 使用頻度: ${cur.q1 || '-'}
+- 使ってる場面: ${(cur.q2 || []).join('・') || '-'}
+- 効率化%: ${cur.q3 || 0}%
+- 成長実感: ${cur.q4 || '-'}${cur.q4Note ? ` (${cur.q4Note})` : ''}
+- 来月やりたい方向: ${cur.q5 || '-'}
+- チーム共有: ${cur.q6 || '-'}${cur.q6Note ? ` (${cur.q6Note})` : ''}
+- できるようになった: ${(cur.didableTags || []).join('・') || '-'}${cur.didable ? ` (${cur.didable})` : ''}
+- 困り度: ${cur.troubleLevel || '-'}${cur.troubleNote ? ` (${cur.troubleNote})` : ''}
+
+【過去${myHist.length}回の履歴】
+${histSummary || '初回回答'}
+
+【今月の社内施策候補】
+${activeInitiatives.map(i => `- ${i.name}: ${i.detail || ''}`).join('\n') || '施策なし'}
+
+【レコメンド作成ルール】
+- 「次のあなたにおすすめ」として、具体的なアクション1つだけ提案
+- 既にこの人が使いこなしてる領域は除外（過去の場面・できたことで判断）
+- 伸びしろある領域・難易度ステップアップする方向で
+- 困り度が高い人（😟😣）にはまず「困り解消」のアドバイスを優先
+- 社内施策候補からも選んでOK（その人にマッチする場合）
+- ${name}さんの「来月やりたい方向」（${cur.q5 || '不明'}）も考慮
+- 出力フォーマット：見出し1行＋具体的に何するか2-3行
+- 絵文字1-2個OK・フレンドリー口調・敬語不要
+- 「これ試してみない？」みたいな提案口調
+
+出力例（イメージ）:
+💡 来月のおすすめ：議事録から提案書へステップアップ
+今月の議事録自動化バッチリにゃ！来月は同じノリで「提案書のたたき台作り」を試してみない？
+Claudeに「○○の提案書、議事録を元に作って」って投げるだけで初稿出てくるよ✨`;
+
+  const recommendation = callGemini(prompt, 600);
+  return { recommendation };
 }
 
 // ============ 経営層分析生成（Claude API） ============

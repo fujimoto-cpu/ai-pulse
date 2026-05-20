@@ -465,6 +465,8 @@
       const [result, setResult] = useState(null);
       const [aiComment, setAiComment] = useState('');
       const [aiLoading, setAiLoading] = useState(false);
+      const [recommendation, setRecommendation] = useState('');
+      const [recLoading, setRecLoading] = useState(false);
 
       const totalSteps = 12;
       const progress = (step / totalSteps) * 100;
@@ -510,27 +512,34 @@
         // AIコメント生成（前月の回答内容を含めて送る）
         if (webhookUrl) {
           setAiLoading(true);
-          try {
-            const res = await callGas(webhookUrl, 'generate_cat_comment', {
-              name: answers.name,
-              score,
-              cumulativeXp,
-              currentMonth: payload.month,
-              currentAnswers: payload
-            });
-            setAiComment(res.comment || stage.message);
-          } catch {
-            setAiComment(stage.message);
-          } finally {
-            setAiLoading(false);
-          }
+          setRecLoading(true);
+          // 並列で2つのAI呼び出し
+          callGas(webhookUrl, 'generate_cat_comment', {
+            name: answers.name,
+            score,
+            cumulativeXp,
+            currentMonth: payload.month,
+            currentAnswers: payload
+          })
+            .then(res => setAiComment(res.comment || stage.message))
+            .catch(() => setAiComment(stage.message))
+            .finally(() => setAiLoading(false));
+
+          callGas(webhookUrl, 'generate_recommendation', {
+            name: answers.name,
+            currentAnswers: payload
+          })
+            .then(res => setRecommendation(res.recommendation || ''))
+            .catch(() => setRecommendation('来月もこの調子で続けてみるにゃ！新しい使い方も1つ試してみてね💡'))
+            .finally(() => setRecLoading(false));
         } else {
           setAiComment(stage.message);
+          setRecommendation('💡 来月のおすすめ\n（Webhook未設定のためサンプル）今月使ってる領域を1つ伸ばすか、まだ使ってない領域を1つ試してみない？');
         }
       };
 
       if (result) {
-        return <SurveyResult result={result} aiComment={aiComment} aiLoading={aiLoading} onComplete={onComplete} />;
+        return <SurveyResult result={result} aiComment={aiComment} aiLoading={aiLoading} recommendation={recommendation} recLoading={recLoading} onComplete={onComplete} />;
       }
 
       // 今月の対象月ラベル
@@ -1049,7 +1058,7 @@
     );
 
     // ============ 回答結果画面 ============
-    const SurveyResult = ({ result, aiComment, aiLoading, onComplete }) => {
+    const SurveyResult = ({ result, aiComment, aiLoading, recommendation, recLoading, onComplete }) => {
       const { score, cumulativeXp, previousCumulativeXp, stage } = result;
       const [displayXp, setDisplayXp] = useState(0);
       const [displayCumXp, setDisplayCumXp] = useState(previousCumulativeXp || 0);
@@ -1147,6 +1156,16 @@
                 <div className="text-sm text-gray-500 typing py-2">考え中にゃ</div>
               ) : (
                 <p className="text-sm whitespace-pre-wrap leading-relaxed">{aiComment}</p>
+              )}
+            </div>
+
+            {/* AIレコメンド：次の一歩 */}
+            <div className="mt-4 p-5 rounded-xl bg-gradient-to-br from-blue-50 via-cyan-50 to-indigo-50 border border-blue-200 comment-fade">
+              <div className="text-xs text-blue-700 font-bold mb-2">💡 来月のあなたへのおすすめ</div>
+              {recLoading ? (
+                <div className="text-sm text-gray-500 typing py-2">あなたに合う「次の一歩」を考えてる</div>
+              ) : (
+                <p className="text-sm whitespace-pre-wrap leading-relaxed text-left">{recommendation}</p>
               )}
             </div>
 
