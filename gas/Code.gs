@@ -72,7 +72,34 @@ function getMaster() {
   }
   const departments = [...new Set(names.map(n => n.department).filter(Boolean))];
 
-  return { names, initiatives, settings, departments };
+  // 統合「選択肢」タブから全質問の選択肢を読み取り、質問キーごとに分類
+  const choicesSheet = ss.getSheetByName('選択肢');
+  const choices = {};
+  if (choicesSheet) {
+    const rows = choicesSheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      if (!r[0]) continue;
+      const key = String(r[0]);
+      const item = {
+        value: r[1] || '',
+        emoji: r[2] || '',
+        label: r[3] || '',
+        detail: r[4] || '',
+        score: parseFloat(r[5]) || 0,
+        order: parseFloat(r[6]) || 0,
+        active: (r[7] === true || r[7] === 'TRUE' || r[7] === 'true' || r[7] === 1)
+      };
+      if (!choices[key]) choices[key] = [];
+      choices[key].push(item);
+    }
+    // 並び順でソート
+    Object.keys(choices).forEach(k => {
+      choices[k].sort((a, b) => a.order - b.order);
+    });
+  }
+
+  return { names, initiatives, settings, departments, choices };
 }
 
 function sheetToObjects(sheet, keys) {

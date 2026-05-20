@@ -174,11 +174,65 @@
         { id: 'I003', name: 'プロンプト集50選 読了', month: '2026-05', detail: '社内ナレッジページを通読', active: true },
       ],
       q5Options: [
-        { value: '個人向上', emoji: '📚', label: '個人向上（自分のスキル磨く）', score: 10, active: true },
-        { value: 'チーム巻き込み', emoji: '🤝', label: 'チーム巻き込み（広めていく）', score: 10, active: true },
-        { value: '新ツール開拓', emoji: '🆕', label: '新ツール開拓（新しい挑戦）', score: 10, active: true },
-        { value: '現状維持', emoji: '🌿', label: '現状維持でいい', score: 3, active: true },
+        { value: '個人向上', emoji: '📚', label: '個人向上（自分のスキル磨く）', score: 2, active: true },
+        { value: 'チーム巻き込み', emoji: '🤝', label: 'チーム巻き込み（広めていく）', score: 2, active: true },
+        { value: '新ツール開拓', emoji: '🆕', label: '新ツール開拓（新しい挑戦）', score: 2, active: true },
+        { value: '現状維持', emoji: '🌿', label: '現状維持でいい', score: 1, active: true },
       ],
+      // 統合「選択肢」マスター（Webhook未設定時のフォールバック）
+      choices: {
+        q1: [
+          { value: 'ほぼ毎日', emoji: '🔥', label: 'ほぼ毎日', detail: '', score: 10, active: true },
+          { value: '週2-3日', emoji: '⚡', label: '週2〜3日', detail: '', score: 5, active: true },
+          { value: '週1日', emoji: '🌱', label: '週1日くらい', detail: '', score: 2, active: true },
+          { value: 'ほぼ使ってない', emoji: '😴', label: 'ほぼ使ってない', detail: '', score: 0, active: true },
+        ],
+        q2: [
+          { value: 'メール作成', emoji: '✉️', label: 'メール作成', score: 1, active: true },
+          { value: '議事録', emoji: '📝', label: '議事録', score: 1, active: true },
+          { value: 'リサーチ', emoji: '🔍', label: 'リサーチ', score: 1, active: true },
+          { value: '企画書', emoji: '📋', label: '企画書', score: 1, active: true },
+          { value: 'デザイン制作', emoji: '🎨', label: 'デザイン制作', score: 1, active: true },
+          { value: 'コピー作成', emoji: '✍️', label: 'コピー作成', score: 1, active: true },
+          { value: 'データ集計', emoji: '📊', label: 'データ集計', score: 1, active: true },
+          { value: '書類処理', emoji: '📄', label: '書類処理', score: 1, active: true },
+        ],
+        q4: [
+          { value: '😫', emoji: '😫', label: '後退', detail: '先月より使えてない／むしろ離れた', score: 0, active: true },
+          { value: '😐', emoji: '😐', label: '変化なし', detail: '先月と同じくらい', score: 1, active: true },
+          { value: '😊', emoji: '😊', label: '少し成長', detail: '新しい使い方を1〜2個身につけた', score: 2, active: true },
+          { value: '🔥', emoji: '🔥', label: '急成長', detail: '自分でも驚くくらい使いこなしてる', score: 3, active: true },
+        ],
+        q5: [
+          { value: '個人向上', emoji: '📚', label: '個人向上（自分のスキル磨く）', score: 2, active: true },
+          { value: 'チーム巻き込み', emoji: '🤝', label: 'チーム巻き込み（広めていく）', score: 2, active: true },
+          { value: '新ツール開拓', emoji: '🆕', label: '新ツール開拓（新しい挑戦）', score: 2, active: true },
+          { value: '現状維持', emoji: '🌿', label: '現状維持でいい', score: 1, active: true },
+        ],
+        q6: [
+          { value: '😫', emoji: '😫', label: '独占中', detail: '誰にも話してない／聞かれてない', score: 0, active: true },
+          { value: '😐', emoji: '😐', label: 'チラ話', detail: '雑談レベルで個別にちょっと', score: 1, active: true },
+          { value: '😊', emoji: '😊', label: 'MTGで共有', detail: 'チームMTGでデモ・共有した', score: 2, active: true },
+          { value: '🔥', emoji: '🔥', label: '展開リード', detail: 'ベスプラとして全社に広めてる', score: 2, active: true },
+        ],
+        didable: [
+          { value: '多言語対応', emoji: '🌍', label: '多言語対応（英語・中国語のメール作成）', active: true },
+          { value: 'データ分析', emoji: '📊', label: 'データ分析・レポート作成', active: true },
+          { value: '企画完結', emoji: '📝', label: '企画書・提案書を一人で完結', active: true },
+          { value: '広範リサーチ', emoji: '🔍', label: '広範囲・短時間リサーチ', active: true },
+          { value: 'デザイン高速化', emoji: '🎨', label: 'デザイン初稿の高速化', active: true },
+          { value: '自動化', emoji: '🤖', label: '繰り返し作業の自動化', active: true },
+          { value: '議事録要約', emoji: '💬', label: '議事録・要約の自動化', active: true },
+          { value: 'コード活用', emoji: '💻', label: 'コード・スクリプト作成', active: true },
+        ],
+        trouble: [
+          { value: '😌', emoji: '😌', label: '全然困ってない', detail: 'スムーズに使えてる', active: true },
+          { value: '🙂', emoji: '🙂', label: '少し困ってる', detail: 'たまに詰まる程度', active: true },
+          { value: '😐', emoji: '😐', label: '中程度', detail: 'ちょこちょこ困りごとあり', active: true },
+          { value: '😟', emoji: '😟', label: 'かなり困ってる', detail: 'やりたいことができない', active: true },
+          { value: '😣', emoji: '😣', label: '非常に困ってる', detail: 'AI使うこと自体が大変', active: true },
+        ],
+      },
       settings: { '人件費単価_時給': 5000, 'AI月額コスト': 50000 }
     };
 
@@ -235,21 +289,29 @@
       return await res.json();
     };
 
-    // ============ XP計算（月最大30XP） ============
+    // ============ XP計算（月最大30XP・master.choicesから動的取得） ============
     const calcScore = (ans, master) => {
+      const ch = (master && master.choices) || {};
+      const findScore = (key, val, fallback) => {
+        const list = ch[key] || [];
+        const item = list.find(o => o.value === val);
+        return item && typeof item.score === 'number' ? item.score : fallback;
+      };
       let xp = 0;
-      // Q1 使用頻度: 0/2/5/10
-      xp += { 'ほぼ毎日': 10, '週2-3日': 5, '週1日': 2, 'ほぼ使ってない': 0 }[ans.q1] || 0;
-      // Q2 場面（複数選択）: 1個1XP・上限6
+      // Q1 使用頻度
+      xp += findScore('q1', ans.q1, { 'ほぼ毎日': 10, '週2-3日': 5, '週1日': 2, 'ほぼ使ってない': 0 }[ans.q1] || 0);
+      // Q2 場面（複数選択）: 上限6
       xp += Math.min(6, (ans.q2 || []).length);
-      // Q3 効率化%: pct/14（100%→7XP・端数切捨）
+      // Q3 効率化%: pct/14
       xp += Math.floor((ans.q3 || 0) / 14);
-      // Q4 成長実感: 0/1/2/3
-      xp += { '😫': 0, '😐': 1, '😊': 2, '🔥': 3 }[ans.q4] || 0;
-      // Q5 方向性: 現状維持=1・その他選択=2
-      if (ans.q5) xp += (ans.q5 === '現状維持') ? 1 : 2;
-      // Q6 共有: 0/1/2
-      xp += { '😫': 0, '😐': 1, '😊': 2, '🔥': 2 }[ans.q6] || 0;
+      // Q4 成長実感
+      xp += findScore('q4', ans.q4, { '😫': 0, '😐': 1, '😊': 2, '🔥': 3 }[ans.q4] || 0);
+      // Q5 方向性（既存q5Optionsもフォールバック）
+      const q5Score = findScore('q5', ans.q5, null);
+      if (q5Score !== null) xp += q5Score;
+      else if (ans.q5) xp += (ans.q5 === '現状維持') ? 1 : 2;
+      // Q6 共有
+      xp += findScore('q6', ans.q6, { '😫': 0, '😐': 1, '😊': 2, '🔥': 2 }[ans.q6] || 0);
       return Math.max(0, Math.min(30, xp));
     };
 
@@ -564,16 +626,16 @@
 
           <div className="bg-white rounded-2xl border p-6 shadow-sm slide-in" key={step}>
             {step === 0 && <NameStep answers={answers} master={master} update={update} onNext={goNext} />}
-            {step === 1 && <Q1Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
-            {step === 2 && <Q2Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 1 && <Q1Step answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 2 && <Q2Step answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
             {step === 3 && <Q3Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
-            {step === 4 && <Q4Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 4 && <Q4Step answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
             {step === 5 && <Q5Step answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
-            {step === 6 && <Q6Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 6 && <Q6Step answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
             {step === 7 && <Q7Step answers={answers} update={update} onNext={goNext} onBack={goBack} />}
             {step === 8 && <InitiativesStep answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
-            {step === 9 && <DidableStep answers={answers} update={update} onNext={goNext} onBack={goBack} />}
-            {step === 10 && <TroubleStep answers={answers} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 9 && <DidableStep answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
+            {step === 10 && <TroubleStep answers={answers} master={master} update={update} onNext={goNext} onBack={goBack} />}
             {step === 11 && <CommentStep answers={answers} update={update} onSubmit={submit} onBack={goBack} submitting={submitting} />}
           </div>
         </div>
@@ -612,34 +674,24 @@
       </button>
     );
 
-    const Q1Step = ({ answers, update, onNext, onBack }) => {
+    const Q1Step = ({ answers, master, update, onNext, onBack }) => {
       const choose = v => { update('q1', v); setTimeout(onNext, 200); };
+      const opts = (master?.choices?.q1 || []).filter(o => o.active);
       return (
         <div>
           <h2 className="text-xl font-bold mb-1">Q1. 今月のAI使用頻度は？</h2>
           <p className="text-sm text-gray-500 mb-6">Claude / ChatGPT / Cowork などをどれくらい使った？</p>
           <div className="grid grid-cols-2 gap-3">
-            {cardChoice('ほぼ毎日', answers.q1, choose, '🔥', 'ほぼ毎日')}
-            {cardChoice('週2-3日', answers.q1, choose, '⚡', '週2〜3日')}
-            {cardChoice('週1日', answers.q1, choose, '🌱', '週1日くらい')}
-            {cardChoice('ほぼ使ってない', answers.q1, choose, '😴', 'ほぼ使ってない')}
+            {opts.map(o => cardChoice(o.value, answers.q1, choose, o.emoji, o.label))}
           </div>
+          {opts.length === 0 && <p className="text-sm text-gray-400 text-center py-4">選択肢未設定</p>}
           <button onClick={onBack} className="mt-6 text-sm text-gray-500">← 戻る</button>
         </div>
       );
     };
 
-    const Q2Step = ({ answers, update, onNext, onBack }) => {
-      const opts = [
-        { v: 'メール作成', e: '✉️' },
-        { v: '議事録', e: '📝' },
-        { v: 'リサーチ', e: '🔍' },
-        { v: '企画書', e: '📋' },
-        { v: 'デザイン制作', e: '🎨' },
-        { v: 'コピー作成', e: '✍️' },
-        { v: 'データ集計', e: '📊' },
-        { v: '書類処理', e: '📄' },
-      ];
+    const Q2Step = ({ answers, master, update, onNext, onBack }) => {
+      const opts = (master?.choices?.q2 || []).filter(o => o.active).map(o => ({ v: o.value, e: o.emoji, label: o.label }));
       const toggle = v => {
         const cur = answers.q2 || [];
         const next = cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v];
@@ -657,7 +709,7 @@
                 className={`p-3 rounded-xl border-2 transition text-left ${(answers.q2 || []).includes(o.v) ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-400'}`}
               >
                 <div className="text-2xl mb-1">{o.e}</div>
-                <div className="text-sm">{o.v}</div>
+                <div className="text-sm">{o.label || o.v}</div>
               </button>
             ))}
           </div>
@@ -764,13 +816,8 @@
       );
     };
 
-    const Q4Step = ({ answers, update, onNext, onBack }) => {
-      const opts = [
-        { e: '😫', label: '後退', detail: '先月より使えてない／むしろ離れた' },
-        { e: '😐', label: '変化なし', detail: '先月と同じくらい' },
-        { e: '😊', label: '少し成長', detail: '新しい使い方を1〜2個身につけた' },
-        { e: '🔥', label: '急成長', detail: '自分でも驚くくらい使いこなしてる' },
-      ];
+    const Q4Step = ({ answers, master, update, onNext, onBack }) => {
+      const opts = (master?.choices?.q4 || []).filter(o => o.active).map(o => ({ e: o.emoji, label: o.label, detail: o.detail }));
       const choose = v => update('q4', v);
       return (
         <div>
@@ -813,7 +860,7 @@
 
     const Q5Step = ({ answers, master, update, onNext, onBack }) => {
       const choose = v => { update('q5', v); setTimeout(onNext, 200); };
-      const q5Opts = (master.q5Options || []).filter(o => o.active);
+      const q5Opts = (master?.choices?.q5 || master?.q5Options || []).filter(o => o.active);
       return (
         <div>
           <h2 className="text-xl font-bold mb-1">Q5. 来月の方向性は？</h2>
@@ -829,13 +876,8 @@
       );
     };
 
-    const Q6Step = ({ answers, update, onNext, onBack }) => {
-      const opts = [
-        { e: '😫', label: '独占中', detail: '誰にも話してない／聞かれてない' },
-        { e: '😐', label: 'チラ話', detail: '雑談レベルで個別にちょっと' },
-        { e: '😊', label: 'MTGで共有', detail: 'チームMTGでデモ・共有した' },
-        { e: '🔥', label: '展開リード', detail: 'ベスプラとして全社に広めてる' },
-      ];
+    const Q6Step = ({ answers, master, update, onNext, onBack }) => {
+      const opts = (master?.choices?.q6 || []).filter(o => o.active).map(o => ({ e: o.emoji, label: o.label, detail: o.detail }));
       const choose = v => update('q6', v);
       return (
         <div>
@@ -933,17 +975,8 @@
       );
     };
 
-    const DidableStep = ({ answers, update, onNext, onBack }) => {
-      const opts = [
-        { v: '多言語対応', e: '🌍', label: '多言語対応（英語・中国語のメール作成）' },
-        { v: 'データ分析', e: '📊', label: 'データ分析・レポート作成' },
-        { v: '企画完結', e: '📝', label: '企画書・提案書を一人で完結' },
-        { v: '広範リサーチ', e: '🔍', label: '広範囲・短時間リサーチ' },
-        { v: 'デザイン高速化', e: '🎨', label: 'デザイン初稿の高速化' },
-        { v: '自動化', e: '🤖', label: '繰り返し作業の自動化' },
-        { v: '議事録要約', e: '💬', label: '議事録・要約の自動化' },
-        { v: 'コード活用', e: '💻', label: 'コード・スクリプト作成' },
-      ];
+    const DidableStep = ({ answers, master, update, onNext, onBack }) => {
+      const opts = (master?.choices?.didable || []).filter(o => o.active).map(o => ({ v: o.value, e: o.emoji, label: o.label }));
       const toggle = v => {
         const cur = answers.didableTags || [];
         update('didableTags', cur.includes(v) ? cur.filter(x => x !== v) : [...cur, v]);
@@ -983,14 +1016,8 @@
       );
     };
 
-    const TroubleStep = ({ answers, update, onNext, onBack }) => {
-      const opts = [
-        { e: '😌', label: '全然困ってない', detail: 'スムーズに使えてる' },
-        { e: '🙂', label: '少し困ってる', detail: 'たまに詰まる程度' },
-        { e: '😐', label: '中程度', detail: 'ちょこちょこ困りごとあり' },
-        { e: '😟', label: 'かなり困ってる', detail: 'やりたいことができない' },
-        { e: '😣', label: '非常に困ってる', detail: 'AI使うこと自体が大変' },
-      ];
+    const TroubleStep = ({ answers, master, update, onNext, onBack }) => {
+      const opts = (master?.choices?.trouble || []).filter(o => o.active).map(o => ({ e: o.emoji, label: o.label, detail: o.detail }));
       const choose = v => update('troubleLevel', v);
       return (
         <div>
