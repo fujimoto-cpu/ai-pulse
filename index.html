@@ -1553,7 +1553,7 @@
 
       const generateAi = async () => {
         if (!webhookUrl) {
-          setAiSummary(`【サンプル総合サマリー】\n今月のKONNEKTのAI活用は、目標${targetSavedH}hに対して ${totalSaved.toFixed(0)}h（達成率${savedAchievement}%）と一定の成果が出た月でした。\nAI浸透率は ${heavyRate}%（目標 ${targetHeavyRate}%）で、コア活用層は安定してきたものの、フォロワー層への横展開はこれから。\n${(deptStats.sort((a,b)=>b.saved-a.saved)[0]?.dept) || '-'} 部署が特に活発で、社内ナレッジ共有の主役候補が見えてきた段階です。\n困ってる人${seriouslyTroubled.length}名・未回答${unanswered.length}名のフォローが来月の鍵になります。\n（※ Webhook URL未設定のためサンプル文です。実際はGemini APIが各月のデータに合わせて生成します）`);
+          setAiSummary(`【サンプル総合サマリー】\n今月のKONNEKTのAI活用は、目標${targetSavedH}hに対して ${totalSaved.toFixed(0)}h（達成率${savedAchievement}%）と一定の成果が出た月でした。\nAI浸透率は ${heavyRate}%（目標 ${targetHeavyRate}%）で、コア活用層は安定してきたものの、フォロワー層への横展開はこれから。\n${(deptStats.sort((a,b)=>b.saved-a.saved)[0]?.dept) || '-'} 部署が特に活発で、社内ナレッジ共有の主役候補が見えてきた段階です。\n困ってる人${seriouslyTroubled.length}名・未回答${unanswered.length}名のフォローが来月の鍵になります。\n（※ Webhook URL未設定のためサンプル文です。実際はAIが各月のデータに合わせて生成します）`);
           setAiAnalysis(`【サンプル分析】\n今月の全社合計削減時間は ${totalSaved.toFixed(1)}h（先月比 ${(totalSaved - lastSaved > 0 ? '+' : '')}${(totalSaved - lastSaved).toFixed(1)}h）。\nAI浸透率は ${heavyRate}% で「${(deptStats.sort((a,b)=>b.saved-a.saved)[0]?.dept) || '-'}」部署が活発。`);
           setNextActions(`1. 困ってる${seriouslyTroubled.length}名（${seriouslyTroubled.map(s => s.name).join('・') || '対象なし'}）に火曜10:00個別DM\n2. マスター達成者（${mastersList.slice(0, 3).join('・') || '対象なし'}）にベスプラ共有会を打診\n3. 未回答${unanswered.length}名へリマインドDM`);
           return;
@@ -1902,7 +1902,7 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-lg font-bold text-indigo-900">💬 今月の総合サマリー</h3>
-                    <p className="text-xs text-gray-500 mt-0.5">AI（Gemini）が今月のデータを総合的に分析した経営層向けレポート</p>
+                    <p className="text-xs text-gray-500 mt-0.5">AIが今月のデータを総合的に分析した経営層向けレポート</p>
                   </div>
                   <button
                     onClick={() => { navigator.clipboard.writeText(aiSummary); alert('コピーしました'); }}
