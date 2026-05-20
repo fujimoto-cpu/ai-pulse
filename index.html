@@ -1419,10 +1419,11 @@
 
       const currentMonth = viewMonth;
       const lastMonth = prevMonth;
-      const thisM = responses.filter(r => r.month === viewMonth);
-      const lastM = responses.filter(r => r.month === prevMonth);
+      const responsesList = responses || [];
+      const thisM = responsesList.filter(r => r.month === viewMonth);
+      const lastM = responsesList.filter(r => r.month === prevMonth);
 
-      const totalCount = master.names.filter(n => n.active).length;
+      const totalCount = (master?.names || []).filter(n => n.active).length;
       const respRate = totalCount ? Math.round(thisM.length / totalCount * 100) : 0;
       // q3は業務効率化%（0-100）。月160h想定で時間換算
       const PCT_TO_HOURS = 1.6;
@@ -1433,14 +1434,14 @@
       const heavyRate = thisM.length ? Math.round(heavyCount / thisM.length * 100) : 0;
       const didableCount = thisM.filter(r => r.didable && r.didable.length > 5).length;
 
-      const hourlyRate = master.settings['人件費単価_時給'] || 5000;
-      const aiCost = master.settings['AI月額コスト'] || 50000;
+      const hourlyRate = (master?.settings && master.settings['人件費単価_時給']) || 5000;
+      const aiCost = (master?.settings && master.settings['AI月額コスト']) || 50000;
       const monthlySaving = totalSaved * hourlyRate;
       const yearlySaving = monthlySaving * 12;
       const roi = aiCost > 0 ? Math.round((monthlySaving - aiCost) / aiCost * 100) : 0;
 
       // 部署別（q3=% → ×1.6で時間換算）
-      const deptStats = master.departments.map(d => {
+      const deptStats = (master?.departments || []).map(d => {
         const m = thisM.filter(r => r.department === d);
         const saved = m.reduce((s,r) => s + (r.q3 || 0) * PCT_TO_HOURS, 0);
         const cost = saved * hourlyRate;
@@ -1458,14 +1459,14 @@
       const troubleVoices = thisM.filter(r => r.troubleNote && r.troubleNote.length > 3).slice(0, 5);
 
       // 施策別実施率
-      const initStats = master.initiatives.filter(i => i.active).map(i => {
+      const initStats = (master?.initiatives || []).filter(i => i.active).map(i => {
         const did = thisM.filter(r => (r.initiatives || []).includes(i.id)).length;
         return { name: i.name, did, rate: thisM.length ? Math.round(did / thisM.length * 100) : 0 };
       });
 
       // 未回答者
       const responded = new Set(thisM.map(r => r.name));
-      const unanswered = master.names.filter(n => n.active && !responded.has(n.name));
+      const unanswered = (master?.names || []).filter(n => n.active && !responded.has(n.name));
 
       // できたこと の声
       const voices = thisM.filter(r => r.didable && r.didable.length > 5).slice(0, 5);
