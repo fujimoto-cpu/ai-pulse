@@ -109,8 +109,21 @@
       },
     ];
 
-    const getCatStage = (cumulativeXp) => {
-      return CAT_STAGES.find(s => cumulativeXp >= s.minXp && cumulativeXp <= s.maxXp) || CAT_STAGES[0];
+    // 累積XP＋回答回数でキャラ判定
+    // ルール:
+    //  - 初回（responseCount=1）は必ず egg（index 0）
+    //  - どんなに高XPでも、1回の回答で2段階以上アップしない
+    //  - N回目の回答時点で到達できる最大ステージは index = N-1
+    const getCatStage = (cumulativeXp, responseCount = 1) => {
+      // 累積XPベースの候補index
+      let xpIndex = 0;
+      for (let i = CAT_STAGES.length - 1; i >= 0; i--) {
+        if (cumulativeXp >= CAT_STAGES[i].minXp) { xpIndex = i; break; }
+      }
+      // 回数キャップ：N回目はindex N-1まで
+      const countCap = Math.max(0, responseCount - 1);
+      const finalIndex = Math.min(xpIndex, countCap);
+      return CAT_STAGES[finalIndex] || CAT_STAGES[0];
     };
 
     // 累積XP→次のキャラまで何XP（次のキャラ名は返さない・ネタバレ防止）
@@ -467,7 +480,10 @@
         // 累積XP = これまでのscore合計 + 今回のscore
         const previousCumulativeXp = calcCumulativeXp(responses, answers.name);
         const cumulativeXp = previousCumulativeXp + score;
-        const stage = getCatStage(cumulativeXp);
+        // 回答回数（今回含む）
+        const previousCount = (responses || []).filter(r => r.name === answers.name).length;
+        const responseCount = previousCount + 1;
+        const stage = getCatStage(cumulativeXp, responseCount);
         const person = master.names.find(n => n.name === answers.name);
         const payload = {
           ...answers,
@@ -944,6 +960,11 @@
       const [displayXp, setDisplayXp] = useState(0);
       const [displayCumXp, setDisplayCumXp] = useState(previousCumulativeXp || 0);
       const nextThreshold = getNextThreshold(cumulativeXp);
+      // 累積XPでは次のステージに行けるけど、回数キャップで止まってる判定
+      const responseCountNow = (result.payload?.responseCount) || ((result.previousResponseCount || 0) + 1);
+      const xpStageIdx = CAT_STAGES.reduce((acc, s, i) => cumulativeXp >= s.minXp ? i : acc, 0);
+      const currentStageIdx = CAT_STAGES.findIndex(s => s.id === stage.id);
+      const cappedByCount = xpStageIdx > currentStageIdx;
 
       // 月次XPカウントアップ
       useEffect(() => {
@@ -1013,7 +1034,11 @@
                   style={{ width: `${barPct}%`, backgroundColor: stage.pixelColor }}
                 />
               </div>
-              {nextThreshold ? (
+              {cappedByCount ? (
+                <p className="text-xs text-gray-500 mt-2">
+                  ✨ XPは十分にゃ！<span className="font-bold" style={{ color: stage.pixelColor }}>来月のチェックインで進化する</span>から楽しみに待つにゃ🌱
+                </p>
+              ) : nextThreshold ? (
                 <p className="text-xs text-gray-500 mt-2">
                   次のキャラまであと <span className="font-bold" style={{ color: stage.pixelColor }}>{nextThreshold.needed} XP</span> 🎁
                 </p>
@@ -1548,11 +1573,15 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
         .sort((a, b) => a.month.localeCompare(b.month));
       const latest = myResponses[myResponses.length - 1];
       const cumulativeXp = myResponses.reduce((sum, r) => sum + (r.score || 0), 0);
-      const currentStage = getCatStage(cumulativeXp);
+      const currentStage = getCatStage(cumulativeXp, myResponses.length);
       const nextThreshold = getNextThreshold(cumulativeXp);
       const barPct = nextThreshold
         ? Math.min(100, Math.round((cumulativeXp - currentStage.minXp) / (nextThreshold.nextMinXp - currentStage.minXp) * 100))
         : 100;
+      // 累積XPでは次のステージに行けるけど、回数キャップで止まってる判定
+      const myXpStageIdx = CAT_STAGES.reduce((acc, s, i) => cumulativeXp >= s.minXp ? i : acc, 0);
+      const myCurrentStageIdx = CAT_STAGES.findIndex(s => s.id === currentStage.id);
+      const myCappedByCount = myXpStageIdx > myCurrentStageIdx;
       const bestMonthlyXp = myResponses.length ? Math.max(...myResponses.map(r => r.score)) : 0;
       const avgMonthlyXp = myResponses.length ? Math.round(myResponses.reduce((s,r) => s + r.score, 0) / myResponses.length) : 0;
 
@@ -1563,12 +1592,12 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
         cumulativeXp: myResponses.slice(0, idx + 1).reduce((s, x) => s + (x.score || 0), 0)
       }));
 
-      // キャラ成長履歴（重複しないステージのみ）
+      // キャラ成長履歴（時系列・回答回数も加味）
       const stageHistory = [];
       let runningXp = 0;
-      myResponses.forEach(r => {
+      myResponses.forEach((r, idx) => {
         runningXp += (r.score || 0);
-        const st = getCatStage(runningXp);
+        const st = getCatStage(runningXp, idx + 1);
         if (!stageHistory.some(h => h.id === st.id)) {
           stageHistory.push({ ...st, firstReachedAt: r.month });
         }
@@ -1612,7 +1641,11 @@ ${voices.slice(0,3).map(v => `・${v.didable}（${v.department}）`).join('\n')}
                       style={{ width: `${barPct}%`, backgroundColor: currentStage.pixelColor }}
                     />
                   </div>
-                  {nextThreshold ? (
+                  {myCappedByCount ? (
+                    <p className="text-xs text-gray-500 mt-2">
+                      ✨ XPは十分にゃ！<span className="font-bold" style={{ color: currentStage.pixelColor }}>来月のチェックインで進化する</span>から楽しみに待つにゃ🌱
+                    </p>
+                  ) : nextThreshold ? (
                     <p className="text-xs text-gray-500 mt-2">
                       次のキャラまであと <span className="font-bold" style={{ color: currentStage.pixelColor }}>{nextThreshold.needed} XP</span> 🎁
                       <span className="text-gray-400"> ※ 次のキャラはおたのしみ</span>
