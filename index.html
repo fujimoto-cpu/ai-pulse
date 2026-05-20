@@ -362,26 +362,27 @@
       return (
         <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <KPI label="全社平均スコア" value={avgScore} unit="pt" color="indigo" />
-            <KPI label="今月の回答" value={`${respCount}/${totalCount}`} unit={`回答率${respRate}%`} color="emerald" />
-            <KPI label="トップ部署" value={deptScores[0]?.dept || '-'} unit={`${deptScores[0]?.score || 0}pt`} color="amber" />
+            <KPI label="全社平均（月次XP）" value={avgScore} unit="/ 30 XP" color="indigo" />
+            <KPI label="今月の回答" value={`${respCount}/${totalCount}`} unit={`回答率 ${respRate}%`} color="emerald" />
+            <KPI label="トップ部署" value={deptScores[0]?.dept || '-'} unit={`${deptScores[0]?.score || 0} XP`} color="amber" />
             <KPI label="ヘビーユーザー率" value={`${heavyRate}%`} unit="毎日活用" color="rose" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card title="📈 月次推移">
+            <Card title="📈 月次推移（全社平均XP）">
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={monthly}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                  <XAxis dataKey="month" />
-                  <YAxis domain={[0,100]} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={3} dot={{ r: 5 }} />
+                  <XAxis dataKey="month" label={{ value: '月', position: 'insideBottom', offset: -5, style: { fontSize: 11, fill: '#888' } }} />
+                  <YAxis domain={[0, 30]} label={{ value: 'XP', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#888' } }} />
+                  <Tooltip formatter={(value) => [`${value} XP`, '平均月次XP']} />
+                  <Line type="monotone" dataKey="score" name="平均月次XP" stroke="#6366f1" strokeWidth={3} dot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
+              <p className="text-xs text-gray-400 mt-2">※ 月最大30XP・社員全員の月次XP平均</p>
             </Card>
 
-            <Card title="🏆 部署別ランキング">
+            <Card title="🏆 部署別ランキング（月次平均XP）">
               <div className="space-y-3">
                 {deptScores.map((d, i) => (
                   <div key={d.dept} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
@@ -390,7 +391,7 @@
                       <span className="font-medium text-sm truncate">{d.dept}</span>
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
-                      <div className="font-bold text-indigo-600">{d.score}pt</div>
+                      <div className="font-bold text-indigo-600">{d.score}<span className="text-xs ml-1">XP</span></div>
                       <div className="text-xs text-gray-500">{d.count}人</div>
                     </div>
                   </div>
