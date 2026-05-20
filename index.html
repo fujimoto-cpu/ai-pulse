@@ -609,14 +609,14 @@
               if (rec) {
                 setRecommendation(rec);
               } else {
-                setRecommendation('💡 来月のおすすめ\n今月の使い方をベースに、新しい場面でも1つAI試してみない？\n小さな積み重ねが累積XPを伸ばすコツだにゃ✨');
+                setRecommendation('💡 来月のおすすめ：議事録活用を「会議前の準備」にも広げる\n今月の議事録AIうまく使えてるね！次は会議の「前」にも使おう。会議資料3つをClaudeに渡して "この会議の論点と聞くべき質問を5つ" と聞くと、準備時間が30分→5分に。\nプロンプト例："以下3つの資料を読んで、明日のMTGで論点になりそうな点と質問を5つ挙げて"\n所要時間5分。明日の朝イチMTGで試してみない？✨');
               }
             })
-            .catch(() => setRecommendation('💡 来月のおすすめ\n来月もこの調子で続けてみるにゃ！\n新しい使い方も1つ試してみてね'))
+            .catch(() => setRecommendation('💡 来月のおすすめ\n来月もこの調子で続けてみるにゃ！新しい使い方も1つ試してみてね'))
             .finally(() => setRecLoading(false));
         } else {
           setAiComment(stage.message);
-          setRecommendation('💡 来月のおすすめ\n（Webhook未設定のためサンプル）今月使ってる領域を1つ伸ばすか、まだ使ってない領域を1つ試してみない？');
+          setRecommendation('💡 来月のおすすめ：Slack MCPで返信を半自動化\nSlack連絡が多いなら、ClaudeにSlack MCP連携設定すると "あの依頼の返信文を3案" って言うだけで下書きが出てくる。返信時間が3分→30秒。\nプロンプト例："今朝の福島さんからのスレッドを読んで、丁寧な返信文を3案"\n準備10分・運用30秒。気軽に試してみて✨\n（※ Webhook未設定のためサンプル文）');
         }
       };
 
