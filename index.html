@@ -638,13 +638,39 @@
       const pct = answers.q3 || 0;
       const hours = (pct * 1.6).toFixed(1); // 月160h基準
 
-      // 具体例ガイド（%レンジに応じて）
+      // 具体例ガイド（%レンジに応じて・自分ごと判断しやすい質問形式）
+      // 高%帯は「今までできなかったことができるようになった」を含む
       const guideExamples = [
-        { max: 9, label: 'ほぼ変化なし', detail: 'たまに使った程度／いつも通り手作業中心', color: 'bg-gray-50 border-gray-200' },
-        { max: 24, label: '少し時短実感', detail: '週1〜2回の業務で活用（短いメール返信・議事録要約・簡単な調べ物）', color: 'bg-amber-50 border-amber-200' },
-        { max: 49, label: '定常業務で活用', detail: '日々のメール・リサーチ・たたき台・商品説明文作成にAI使えてる', color: 'bg-emerald-50 border-emerald-200' },
-        { max: 74, label: '主要業務でフル活用', detail: '企画書・提案書・データ集計・コピー量産にAIフル投入', color: 'bg-indigo-50 border-indigo-200' },
-        { max: 100, label: 'AI前提のワークスタイル', detail: '人がやる作業がほぼなくなった／AIなしでは仕事できないレベル', color: 'bg-purple-50 border-purple-200' },
+        {
+          max: 9,
+          label: 'AI、まだほぼ使ってない',
+          detail: '「アカウントは作ったけど、たまに開く程度」「仕事は今まで通り手作業中心」',
+          color: 'bg-gray-50 border-gray-200'
+        },
+        {
+          max: 24,
+          label: '一部の作業でAIを試してる',
+          detail: '「短いメール返信や、議事録の要約だけAIに頼んでる」「調べ物の時に時々ChatGPT/Claudeを開く」',
+          color: 'bg-amber-50 border-amber-200'
+        },
+        {
+          max: 49,
+          label: '日々の業務でAIが定着',
+          detail: '「メール作成・リサーチ・たたき台作りは基本AI任せ」「商品説明文や議事録は自分で書かなくなった」',
+          color: 'bg-emerald-50 border-emerald-200'
+        },
+        {
+          max: 74,
+          label: '主要業務をAIと一緒にやってる＋できる範囲も広がってきた',
+          detail: '「企画書・提案書・データ集計までAIに作らせる」「英訳やデータ分析など、今まで時間かかってたことが秒で終わる」',
+          color: 'bg-indigo-50 border-indigo-200'
+        },
+        {
+          max: 100,
+          label: '今までできなかったことができる／AI前提で業務範囲が広がった',
+          detail: '「多言語メールが自分で書ける」「データ分析レポートを一人で作れる」「企画書を一人で完結できる」「新しい領域に手を出せるようになった」',
+          color: 'bg-purple-50 border-purple-200'
+        },
       ];
       const guide = guideExamples.find(g => pct <= g.max) || guideExamples[0];
 
@@ -686,12 +712,12 @@
           {/* 全レンジの目安（小さく表示） */}
           <details className="mt-3 text-xs text-gray-500">
             <summary className="cursor-pointer">すべての目安を見る</summary>
-            <div className="mt-2 space-y-1 pl-3 border-l-2 border-gray-200">
-              <div><b>0-9%：</b>ほぼ変化なし／たまに使った程度</div>
-              <div><b>10-24%：</b>週1〜2回（短いメール・議事録要約）</div>
-              <div><b>25-49%：</b>定常業務で活用（日々のメール・リサーチ・たたき台）</div>
-              <div><b>50-74%：</b>主要業務でフル活用（企画書・提案書・データ集計）</div>
-              <div><b>75-100%：</b>AI前提のワークスタイル</div>
+            <div className="mt-2 space-y-1.5 pl-3 border-l-2 border-gray-200">
+              <div><b>0-9%：</b>AI、まだほぼ使ってない（たまに開く程度）</div>
+              <div><b>10-24%：</b>一部の作業でAIを試してる（短いメール返信・議事録要約）</div>
+              <div><b>25-49%：</b>日々の業務でAIが定着（メール・リサーチ・たたき台）</div>
+              <div><b>50-74%：</b>主要業務をAIと一緒に＋できる範囲も広がってきた（企画書・データ分析）</div>
+              <div><b>75-100%：</b>今までできなかったことができる／業務範囲が広がった（多言語メール・分析レポート・新領域）</div>
             </div>
           </details>
 
@@ -898,7 +924,7 @@
           value={answers.comment}
           onChange={e => update('comment', e.target.value)}
           rows={3}
-          placeholder="自由にどうぞ"
+          placeholder="例：AI活用で困っていること、もっと欲しいツール・サポート、AI推進チームへの要望など"
           className="w-full p-3 border rounded-lg text-base"
         />
         <div className="flex justify-between mt-6">
